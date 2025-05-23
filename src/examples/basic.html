@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Consent - Basic Example</title>
+    <link rel="stylesheet" href="../css/cookie-consent.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Cookie Consent Example</h1>
+        <p>This is a basic example of the cookie consent script.</p>
+    </div>
+
+    <script type="module">
+        import { CookieConsent } from '../js/index.js';
+
+        // Инициализация скрипта
+        CookieConsent.init({
+            language: 'ru',
+            position: 'bottom',
+            theme: 'light',
+            categories: ['necessary', 'analytics', 'marketing', 'functional']
+        });
+
+        // Пример обработки событий
+        window.addEventListener('cookieConsent', function(e) {
+            console.log('Cookie consent updated:', e.detail);
+            
+            // Пример загрузки аналитики после согласия
+            if (e.detail.analytics) {
+                // Здесь можно загрузить аналитику
+                console.log('Analytics enabled');
+            }
+        });
+    </script>
+</body>
+</html> 

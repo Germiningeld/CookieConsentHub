@@ -1,0 +1,26 @@
+{
+    "name": "cookie-consent-hub",
+    "version": "1.0.0",
+    "description": "Cookie consent notification script for GDPR and 152-FZ compliance",
+    "type": "module",
+    "scripts": {
+      "sass": "sass src/sass:src/css --style compressed",
+      "sass:watch": "sass src/sass:src/css --style compressed --watch",
+      "js": "terser src/js/cookie-consent.js -o dist/cookie-consent.min.js",
+      "js:gtm": "terser src/js/cookie-consent-gtm.js -o dist/cookie-consent-gtm.min.js",
+      "build": "npm run sass && npm run js && npm run js:gtm"
+    },
+    "keywords": [
+      "cookie",
+      "consent",
+      "gdpr",
+      "privacy",
+      "notification"
+    ],
+    "author": "Germiningeld",
+    "license": "MIT",
+    "devDependencies": {
+      "sass": "^1.69.0",
+      "terser": "^5.24.0"
+    }
+  }
