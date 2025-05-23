@@ -1,5 +1,7 @@
+import { cookieConsentConfig } from './cookie-consent-config.js';
+
 export class ConsentNotification {
-    constructor() {
+    constructor(config = {}) {
         console.log('ConsentNotification: constructor called');
         // Проверяем, не существует ли уже экземпляр
         if (window.cookieConsentInstance) {
@@ -13,35 +15,29 @@ export class ConsentNotification {
         this.isVisible = false;
         this.isOverlayVisible = false;
         this.isSettingsVisible = false;
-        this.categories = {
-            necessary: {
-                title: 'Необходимые',
-                description: 'Эти файлы cookie необходимы для работы сайта и не могут быть отключены.',
-                required: true
-            },
-            analytics: {
-                title: 'Аналитика',
-                description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая информацию о его использовании.',
-                required: false
-            },
-            marketing: {
-                title: 'Маркетинг',
-                description: 'Эти файлы cookie используются для отслеживания посетителей на веб-сайтах.',
-                required: false
-            },
-            functional: {
-                title: 'Функциональные',
-                description: 'Эти файлы cookie позволяют сайту запоминать сделанные вами выборы.',
-                required: false
-            }
+        this.pendingConsent = null;
+
+        // Объединяем конфигурацию по умолчанию с пользовательской
+        this.config = {
+            categories: { ...cookieConsentConfig.categories, ...config.categories },
+            texts: { ...cookieConsentConfig.texts, ...config.texts }
         };
+
         this.initialize();
     }
 
     initialize() {
         console.log('ConsentNotification: initialize called');
-        this.createElements();
-        this.render();
+        const savedConsent = localStorage.getItem('cookieConsent');
+        
+        if (savedConsent) {
+            console.log('ConsentNotification: Found saved consent, loading scripts');
+            this.loadScripts(JSON.parse(savedConsent));
+        } else {
+            console.log('ConsentNotification: No saved consent, showing banner');
+            this.createElements();
+            this.render();
+        }
     }
 
     createElements() {
@@ -132,10 +128,10 @@ export class ConsentNotification {
 
         this.notification.innerHTML = `
             <div class="cookie-consent__content">
-                <h2 class="cookie-consent__title">Настройки файлов cookie</h2>
-                <p class="cookie-consent__description">Мы используем файлы cookie для улучшения вашего опыта на нашем сайте. Пожалуйста, выберите, какие файлы cookie вы хотите принять.</p>
+                <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
+                <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
                 <div class="cookie-consent__categories">
-                    ${Object.entries(this.categories).map(([key, category]) => `
+                    ${Object.entries(this.config.categories).map(([key, category]) => `
                         <div class="cookie-consent__category">
                             <label class="cookie-consent__checkbox">
                                 <input type="checkbox" name="${key}" ${category.required ? 'checked disabled' : ''}>
@@ -148,9 +144,9 @@ export class ConsentNotification {
                     `).join('')}
                 </div>
                 <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">Принять все</button>
-                    <button class="cookie-consent__button cookie-consent__button--necessary">Только необходимые</button>
-                    <a href="#" class="cookie-consent__link cookie-consent__link--settings">Настроить предпочтения</a>
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.mainBanner.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--necessary">${this.config.texts.mainBanner.acceptNecessary}</button>
+                    <a href="#" class="cookie-consent__link cookie-consent__link--settings">${this.config.texts.mainBanner.settings}</a>
                 </div>
             </div>
         `;
@@ -175,6 +171,12 @@ export class ConsentNotification {
         this.isVisible = false;
         this.isOverlayVisible = false;
         document.body.style.overflow = '';
+
+        // Загружаем скрипты при скрытии оверлея
+        if (this.pendingConsent) {
+            this.loadScripts(this.pendingConsent);
+            this.pendingConsent = null;
+        }
     }
 
     handleAcceptAll() {
@@ -253,23 +255,52 @@ export class ConsentNotification {
         }
     }
 
+    loadScripts(consent) {
+        console.log('ConsentNotification: Loading scripts based on consent', consent);
+        
+        Object.entries(consent).forEach(([category, isAllowed]) => {
+            if (isAllowed && this.config.categories[category]?.scripts) {
+                this.config.categories[category].scripts.forEach(script => {
+                    if (script.type === 'file') {
+                        console.log(`ConsentNotification: Loading file script from category ${category}: ${script.path}`);
+                        alert(`Загружен файл из категории "${this.config.categories[category].title}": ${script.path}`);
+                        
+                        const scriptElement = document.createElement('script');
+                        scriptElement.src = script.path;
+                        document.body.appendChild(scriptElement);
+                    } else if (script.type === 'inline') {
+                        console.log(`ConsentNotification: Loading inline script from category ${category}`);
+                        alert(`Выполнен inline-скрипт из категории "${this.config.categories[category].title}"`);
+                        
+                        const scriptElement = document.createElement('script');
+                        scriptElement.textContent = script.code;
+                        document.body.appendChild(scriptElement);
+                    }
+                });
+            }
+        });
+    }
+
     saveConsent(consent) {
         console.log('ConsentNotification: saveConsent called with', consent);
         localStorage.setItem('cookieConsent', JSON.stringify(consent));
         window.dispatchEvent(new CustomEvent('cookieConsent', {
             detail: consent
         }));
+        
+        // Сохраняем согласие для последующей загрузки скриптов
+        this.pendingConsent = consent;
     }
 
     showSecondaryBanner() {
         console.log('ConsentNotification: showSecondaryBanner called');
         this.notification.innerHTML = `
             <div class="cookie-consent__content">
-                <h2 class="cookie-consent__title">Улучшите свой опыт</h2>
-                <p class="cookie-consent__description">Разрешите аналитические и маркетинговые cookie для получения персонализированного контента и улучшения нашего сервиса.</p>
+                <h2 class="cookie-consent__title">${this.config.texts.secondaryBanner.title}</h2>
+                <p class="cookie-consent__description">${this.config.texts.secondaryBanner.description}</p>
                 <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">Разрешить все</button>
-                    <button class="cookie-consent__button cookie-consent__button--close">Оставить мой выбор</button>
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.secondaryBanner.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--close">${this.config.texts.secondaryBanner.keepChoice}</button>
                 </div>
             </div>
         `;
