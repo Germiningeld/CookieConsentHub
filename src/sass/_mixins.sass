@@ -1,0 +1,46 @@
+// Миксины для flexbox
+@mixin flex-start
+  display: flex
+  align-items: center
+
+@mixin flex-between
+  display: flex
+  justify-content: space-between
+  align-items: center
+
+// Миксин для кнопок
+@mixin button-base
+  padding: 8px 16px
+  border-radius: 4px
+  border: none
+  cursor: pointer
+  font-size: 14px
+  transition: all 0.3s ease
+
+@mixin button-variant($bg-color, $text-color, $hover-color)
+  background-color: $bg-color
+  color: $text-color
+  &:hover
+    background-color: $hover-color
+
+// Миксин для заголовков
+@mixin heading($font-size)
+  font-size: $font-size
+  font-weight: 600
+  line-height: 1.2
+
+// Миксин для переходов
+@mixin transition($property, $duration)
+  transition: $property $duration ease
+
+// Миксин для медиа-запросов
+@mixin respond-to($breakpoint)
+  @if $breakpoint == sm
+    @media (max-width: 576px)
+      @content
+  @if $breakpoint == md
+    @media (max-width: 768px)
+      @content
+  @if $breakpoint == lg
+    @media (max-width: 992px)
+      @content 
