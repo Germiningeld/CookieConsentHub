@@ -71,89 +71,50 @@ export class ConsentNotification {
         // Добавляем новые обработчики
         const acceptAllBtn = this.notification.querySelector('.cookie-consent__button--all');
         const acceptNecessaryBtn = this.notification.querySelector('.cookie-consent__button--necessary');
-        const acceptSelectedBtn = this.notification.querySelector('.cookie-consent__button--selected');
         const settingsLink = this.notification.querySelector('.cookie-consent__link--settings');
         const closeBtn = this.notification.querySelector('.cookie-consent__button--close');
 
-        console.log('Found buttons:', {
-            acceptAll: !!acceptAllBtn,
-            acceptNecessary: !!acceptNecessaryBtn,
-            acceptSelected: !!acceptSelectedBtn,
-            settings: !!settingsLink,
-            close: !!closeBtn
-        });
-
         if (acceptAllBtn) {
-            console.log('Adding accept all handler');
-            acceptAllBtn.addEventListener('click', () => {
-                console.log('Accept all clicked');
-                this.handleAcceptAll();
-            });
+            acceptAllBtn.addEventListener('click', () => this.handleAcceptAll());
         }
         if (acceptNecessaryBtn) {
-            console.log('Adding accept necessary handler');
-            acceptNecessaryBtn.addEventListener('click', () => {
-                console.log('Accept necessary clicked');
-                this.handleAcceptNecessary();
-            });
-        }
-        if (acceptSelectedBtn) {
-            console.log('Adding accept selected handler');
-            acceptSelectedBtn.addEventListener('click', () => {
-                console.log('Accept selected clicked');
-                this.handleAcceptSelected();
-            });
+            acceptNecessaryBtn.addEventListener('click', () => this.handleAcceptNecessary());
         }
         if (settingsLink) {
-            console.log('Adding settings handler');
             settingsLink.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Settings clicked');
                 this.handleSettings();
             });
         }
         if (closeBtn) {
-            console.log('Adding close handler');
-            closeBtn.addEventListener('click', () => {
-                console.log('Close clicked');
-                this.hide();
-            });
+            closeBtn.addEventListener('click', () => this.hide());
         }
 
         // Обработчик для оверлея
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay) {
-                console.log('Overlay clicked');
-                // Проверяем, есть ли сохраненные настройки
-                const savedConsent = localStorage.getItem('cookieConsent');
-                
-                if (savedConsent) {
-                    // Если настройки уже есть - просто закрываем модальное окно
-                    console.log('Settings exist, just closing modal');
-                    this.hide();
-                } else {
-                    // Если настройки еще не установлены - показываем сообщение
-                    console.log('No settings yet, showing message');
-                    alert('Пожалуйста, выберите настройки cookie для продолжения работы с сайтом');
-                }
+                this.handleAcceptNecessary();
             }
         });
 
         // Обработчики для чекбоксов в настройках
         const checkboxes = this.notification.querySelectorAll('.cookie-consent__checkbox input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                console.log('Checkbox changed:', checkbox.name, checkbox.checked);
-                this.handleCheckboxChange();
-            });
+            checkbox.addEventListener('change', () => this.handleCheckboxChange());
         });
         console.log('ConsentNotification: Event listeners added');
     }
 
     handleCheckboxChange() {
         console.log('ConsentNotification: handleCheckboxChange called');
-        // Убираем немедленное сохранение настроек
-        // Теперь настройки будут сохраняться только после нажатия кнопки
+        const checkboxes = this.notification.querySelectorAll('.cookie-consent__checkbox input[type="checkbox"]');
+        const consent = {};
+        
+        checkboxes.forEach(checkbox => {
+            consent[checkbox.name] = checkbox.checked;
+        });
+
+        this.saveConsent(consent);
     }
 
     render() {
@@ -253,12 +214,20 @@ export class ConsentNotification {
             if (this.isSettingsVisible) {
                 const buttonsContainer = this.notification.querySelector('.cookie-consent__buttons');
                 buttonsContainer.innerHTML = `
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
+                    <button class="cookie-consent__button cookie-consent__button--all">Принять все</button>
+                    <button class="cookie-consent__button cookie-consent__button--selected">Принять выбранные</button>
                 `;
                 
-                // Пересоздаем обработчики событий
-                this.addEventListeners();
+                // Добавляем обработчики для новых кнопок
+                const acceptAllBtn = buttonsContainer.querySelector('.cookie-consent__button--all');
+                const acceptSelectedBtn = buttonsContainer.querySelector('.cookie-consent__button--selected');
+                
+                if (acceptAllBtn) {
+                    acceptAllBtn.addEventListener('click', () => this.handleAcceptAll());
+                }
+                if (acceptSelectedBtn) {
+                    acceptSelectedBtn.addEventListener('click', () => this.handleAcceptSelected());
+                }
             }
         }
     }
@@ -267,18 +236,23 @@ export class ConsentNotification {
         console.log('ConsentNotification: handleAcceptSelected called');
         const checkboxes = this.notification.querySelectorAll('.cookie-consent__checkbox input[type="checkbox"]');
         const consent = {};
+        let allSelected = true;
         
         checkboxes.forEach(checkbox => {
             consent[checkbox.name] = checkbox.checked;
+            if (!checkbox.checked) {
+                allSelected = false;
+            }
         });
 
-        console.log('Selected consent:', consent);
-        
-        // Сохраняем настройки и применяем их
         this.saveConsent(consent);
         
-        // Просто скрываем баннер без показа вторичного
-        this.hide();
+        // Показываем второй баннер, если не все опции выбраны
+        if (!allSelected) {
+            this.showSecondaryBanner();
+        } else {
+            this.hide();
+        }
     }
 
     loadScripts(consent) {
@@ -309,23 +283,10 @@ export class ConsentNotification {
 
     saveConsent(consent) {
         console.log('ConsentNotification: saveConsent called with', consent);
-        const oldConsent = JSON.parse(localStorage.getItem('cookieConsent') || '{}');
-        
-        // Проверяем, были ли отключены какие-либо скрипты
-        const scriptsDisabled = Object.entries(consent).some(([category, isAllowed]) => {
-            return oldConsent[category] && !isAllowed;
-        });
-
         localStorage.setItem('cookieConsent', JSON.stringify(consent));
         window.dispatchEvent(new CustomEvent('cookieConsent', {
             detail: consent
         }));
-        
-        // Если скрипты были отключены, перезагружаем страницу
-        if (scriptsDisabled) {
-            window.location.reload();
-            return;
-        }
         
         // Сохраняем согласие для последующей загрузки скриптов
         this.pendingConsent = consent;
@@ -346,46 +307,5 @@ export class ConsentNotification {
         this.notification.classList.add('cookie-consent--secondary');
         this.addEventListeners();
         console.log('ConsentNotification: Secondary banner shown');
-    }
-
-    // Новый метод для открытия настроек в любое время
-    openSettings() {
-        console.log('ConsentNotification: openSettings called');
-        if (!this.notification) {
-            this.createElements();
-        }
-        
-        // Загружаем сохраненные настройки
-        const savedConsent = JSON.parse(localStorage.getItem('cookieConsent') || '{}');
-        
-        this.notification.innerHTML = `
-            <div class="cookie-consent__content">
-                <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
-                <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
-                <div class="cookie-consent__categories cookie-consent__categories--visible">
-                    ${Object.entries(this.config.categories).map(([key, category]) => `
-                        <div class="cookie-consent__category">
-                            <label class="cookie-consent__checkbox">
-                                <input type="checkbox" name="${key}" 
-                                    ${category.required ? 'checked disabled' : ''} 
-                                    ${savedConsent[key] ? 'checked' : ''}>
-                                <div>
-                                    <div class="cookie-consent__category-title">${category.title}</div>
-                                    <div class="cookie-consent__category-description">${category.description}</div>
-                                </div>
-                            </label>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
-                </div>
-            </div>
-        `;
-        
-        this.isSettingsVisible = true;
-        this.addEventListeners();
-        this.show();
     }
 } 
