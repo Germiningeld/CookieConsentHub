@@ -292,9 +292,18 @@ export class ConsentNotification {
         window.dispatchEvent(new CustomEvent('cookieConsent', {
             detail: consent
         }));
+<<<<<<< HEAD
+=======
+        
+        // Если скрипты были отключены, перезагружаем страницу
+        if (scriptsDisabled) {
+            window.location.reload();
+            return;
+        }
         
         // Сохраняем согласие для последующей загрузки скриптов
         this.pendingConsent = consent;
+>>>>>>> parent of fb533a6 (Revert "Add overlay behavior")
     }
 
     showSecondaryBanner() {

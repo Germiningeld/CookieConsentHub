@@ -1,0 +1,60 @@
+// Миксины для флекс-контейнеров
+@mixin flex-start
+  display: flex
+  align-items: flex-start
+
+@mixin flex-center
+  display: flex
+  align-items: center
+  justify-content: center
+
+@mixin flex-between
+  display: flex
+  align-items: center
+  justify-content: space-between
+
+// Миксин для заголовков
+@mixin heading($size)
+  font-size: $size
+  font-weight: 600
+  line-height: 1.2
+  margin: 0
+
+// Миксин для кнопок
+@mixin button-base
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  padding: 0.5rem 1rem
+  border: none
+  border-radius: 4px
+  font-size: 0.875rem
+  font-weight: 500
+  cursor: pointer
+  transition: background-color 0.2s, color 0.2s
+  text-decoration: none
+
+@mixin button-variant($bg, $color, $hover-bg)
+  background-color: $bg
+  color: $color
+  &:hover
+    background-color: $hover-bg
+
+// Миксин для переходов
+@mixin transition($property, $duration)
+  transition: $property $duration ease-in-out
+
+// Миксин для медиа-запросов
+@mixin respond-to($breakpoint)
+  @if $breakpoint == sm
+    @media (min-width: 576px)
+      @content
+  @else if $breakpoint == md
+    @media (min-width: 768px)
+      @content
+  @else if $breakpoint == lg
+    @media (min-width: 992px)
+      @content
+  @else if $breakpoint == xl
+    @media (min-width: 1200px)
+      @content 

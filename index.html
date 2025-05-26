@@ -160,15 +160,23 @@ cookieConsent.openSettings();</code></pre>
     </div>
 
     <script type="module">
-        import { ConsentNotification } from './src/js/consent-notification.js';
+        import { CookieConsent } from './src/js/cookie-consent.js';
         
         // Инициализация
-        const cookieConsent = new ConsentNotification();
+        const cookieConsent = CookieConsent.init({
+            overlay: {
+                blur: '5px',
+                background: 'rgba(0, 0, 0, 0.5)'
+            }
+        });
         
         // Добавляем обработчик для кнопки настроек
         document.getElementById('openSettings').addEventListener('click', () => {
-            cookieConsent.openSettings();
+            cookieConsent.notification.openSettings();
         });
+
+        // Очищаем сохраненные настройки для демонстрации
+        localStorage.removeItem('cookieConsent');
     </script>
 </body>
 </html> 
