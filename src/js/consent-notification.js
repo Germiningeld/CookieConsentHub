@@ -16,9 +16,12 @@ export class ConsentNotification {
         this.isOverlayVisible = false;
         this.isSettingsVisible = false;
         this.pendingConsent = null;
+        this.currentModalType = null;
 
         // Объединяем конфигурацию по умолчанию с пользовательской
         this.config = {
+            modalTypes: cookieConsentConfig.modalTypes,
+            visual: { ...cookieConsentConfig.visual, ...config.visual },
             categories: { ...cookieConsentConfig.categories, ...config.categories },
             texts: { ...cookieConsentConfig.texts, ...config.texts }
         };
@@ -51,9 +54,18 @@ export class ConsentNotification {
 
         this.notification = document.createElement('div');
         this.notification.className = 'cookie-consent';
+        // Применяем настройки модального окна
+        this.notification.style.setProperty('--cookie-consent-z-index', this.config.visual.modal.zIndex);
+        this.notification.style.setProperty('--cookie-consent-max-width', this.config.visual.modal.maxWidth);
+        this.notification.style.setProperty('--cookie-consent-border-radius', this.config.visual.modal.borderRadius);
+        this.notification.style.setProperty('--cookie-consent-box-shadow', this.config.visual.modal.boxShadow);
         
         this.overlay = document.createElement('div');
         this.overlay.className = 'cookie-consent-overlay';
+        // Применяем настройки оверлея
+        this.overlay.style.setProperty('--cookie-consent-blur', this.config.visual.overlay.blur);
+        this.overlay.style.setProperty('--cookie-consent-overlay-color', this.config.visual.overlay.color);
+        this.overlay.style.setProperty('--cookie-consent-overlay-z-index', this.config.visual.overlay.zIndex);
         
         document.body.appendChild(this.overlay);
         document.body.appendChild(this.notification);
@@ -120,9 +132,19 @@ export class ConsentNotification {
             });
         }
 
+        // Обработчик для кнопки закрытия
+        const closeButton = this.notification.querySelector('.cookie-consent__close-button');
+        if (closeButton) {
+            console.log('Adding close button handler');
+            closeButton.addEventListener('click', () => {
+                console.log('Close button clicked');
+                this.hide();
+            });
+        }
+
         // Обработчик для оверлея
         this.overlay.addEventListener('click', (e) => {
-            if (e.target === this.overlay) {
+            if (e.target === this.overlay && this.config.visual.allowClose) {
                 console.log('Overlay clicked');
                 // Проверяем, есть ли сохраненные настройки
                 const savedConsent = localStorage.getItem('cookieConsent');
@@ -165,11 +187,122 @@ export class ConsentNotification {
             return;
         }
 
+        this.currentModalType = this.config.modalTypes.INITIAL;
+        this.renderModal(this.currentModalType);
+    }
+
+    renderModal(modalType) {
+        console.log(`ConsentNotification: Rendering modal type: ${modalType}`);
+        
+        // Получаем настройки для текущего типа модального окна
+        const modalSettings = this.config.visual.modalTypes[modalType];
+        
+        // Сбрасываем все классы позиционирования и анимации
+        this.notification.classList.remove(
+            'cookie-consent--secondary',
+            'cookie-consent--top',
+            'cookie-consent--bottom',
+            'cookie-consent--fade',
+            'cookie-consent--slide'
+        );
+
+        // Применяем настройки позиционирования
+        if (modalSettings.position === 'top') {
+            this.notification.classList.add('cookie-consent--top');
+        } else if (modalSettings.position === 'bottom') {
+            this.notification.classList.add('cookie-consent--bottom');
+        }
+
+        // Применяем настройки анимации
+        if (modalSettings.animation !== 'none') {
+            this.notification.classList.add(`cookie-consent--${modalSettings.animation}`);
+        }
+
+        // Применяем максимальную ширину
+        this.notification.style.setProperty('--cookie-consent-max-width', modalSettings.maxWidth);
+
+        // Показываем/скрываем оверлей
+        this.overlay.style.display = modalSettings.showOverlay ? 'block' : 'none';
+        
+        // Обновляем обработчик клика по оверлею
+        this.overlay.onclick = modalSettings.closeOnOverlayClick ? 
+            (e) => {
+                if (e.target === this.overlay && modalSettings.allowClose) {
+                    this.hide();
+                }
+            } : null;
+
+        // Рендерим содержимое модального окна
+        switch (modalType) {
+            case this.config.modalTypes.INITIAL:
+                this.renderInitialModal();
+                break;
+            case this.config.modalTypes.FIRST_VISIT_SETTINGS:
+                this.renderFirstVisitSettingsModal();
+                break;
+            case this.config.modalTypes.EXPERIENCE_IMPROVE:
+                this.renderExperienceImproveModal();
+                break;
+            case this.config.modalTypes.MANUAL_SETTINGS:
+                this.renderManualSettingsModal();
+                break;
+        }
+
+        // Добавляем кнопку закрытия если разрешено
+        if (modalSettings.allowClose) {
+            const closeButton = this.notification.querySelector('.cookie-consent__close-button');
+            if (!closeButton) {
+                const content = this.notification.querySelector('.cookie-consent__content');
+                if (content) {
+                    content.insertAdjacentHTML('afterbegin', 
+                        '<button class="cookie-consent__close-button" aria-label="Закрыть"></button>'
+                    );
+                }
+            }
+        } else {
+            const closeButton = this.notification.querySelector('.cookie-consent__close-button');
+            if (closeButton) {
+                closeButton.remove();
+            }
+        }
+
+        this.currentModalType = modalType;
+        this.addEventListeners();
+        this.show();
+    }
+
+    renderInitialModal() {
+        const modalSettings = this.config.visual.modalTypes[this.config.modalTypes.INITIAL];
+        const isInline = modalSettings.position === 'top' || modalSettings.position === 'bottom';
+        
         this.notification.innerHTML = `
             <div class="cookie-consent__content">
+                ${this.config.visual.modal.allowClose ? '<button class="cookie-consent__close-button" aria-label="Закрыть"></button>' : ''}
+                ${isInline ? `
+                    <div>
+                        <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
+                        <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
+                    </div>
+                ` : `
+                    <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
+                    <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
+                `}
+                <div class="cookie-consent__buttons">
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.mainBanner.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--necessary">${this.config.texts.mainBanner.acceptNecessary}</button>
+                    <a href="#" class="cookie-consent__link cookie-consent__link--settings">${this.config.texts.mainBanner.settings}</a>
+                </div>
+            </div>
+        `;
+    }
+
+    renderFirstVisitSettingsModal() {
+        this.notification.innerHTML = `
+            <div class="cookie-consent__content">
+                ${this.config.visual.allowClose ? '<button class="cookie-consent__close-button" aria-label="Закрыть"></button>' : ''}
                 <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
                 <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
-                <div class="cookie-consent__categories">
+                <div class="cookie-consent__categories cookie-consent__categories--visible">
                     ${Object.entries(this.config.categories).map(([key, category]) => `
                         <div class="cookie-consent__category">
                             <label class="cookie-consent__checkbox">
@@ -183,33 +316,133 @@ export class ConsentNotification {
                     `).join('')}
                 </div>
                 <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.mainBanner.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--necessary">${this.config.texts.mainBanner.acceptNecessary}</button>
-                    <a href="#" class="cookie-consent__link cookie-consent__link--settings">${this.config.texts.mainBanner.settings}</a>
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
                 </div>
             </div>
         `;
-        this.addEventListeners();
-        this.show();
-        console.log('ConsentNotification: Banner rendered and shown');
+        this.isSettingsVisible = true;
+    }
+
+    renderExperienceImproveModal() {
+        const modalSettings = this.config.visual.modalTypes[this.config.modalTypes.EXPERIENCE_IMPROVE];
+        const isInline = modalSettings.position === 'top' || modalSettings.position === 'bottom';
+        
+        this.notification.innerHTML = `
+            <div class="cookie-consent__content">
+                ${this.config.visual.modal.allowClose ? '<button class="cookie-consent__close-button" aria-label="Закрыть"></button>' : ''}
+                ${isInline ? `
+                    <div>
+                        <h2 class="cookie-consent__title">${this.config.texts.secondaryBanner.title}</h2>
+                        <p class="cookie-consent__description">${this.config.texts.secondaryBanner.description}</p>
+                    </div>
+                ` : `
+                    <h2 class="cookie-consent__title">${this.config.texts.secondaryBanner.title}</h2>
+                    <p class="cookie-consent__description">${this.config.texts.secondaryBanner.description}</p>
+                `}
+                <div class="cookie-consent__buttons">
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.secondaryBanner.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--close">${this.config.texts.secondaryBanner.keepChoice}</button>
+                </div>
+            </div>
+        `;
+    }
+
+    renderManualSettingsModal() {
+        const savedConsent = JSON.parse(localStorage.getItem('cookieConsent') || '{}');
+        
+        this.notification.innerHTML = `
+            <div class="cookie-consent__content">
+                ${this.config.visual.allowClose ? '<button class="cookie-consent__close-button" aria-label="Закрыть"></button>' : ''}
+                <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
+                <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
+                <div class="cookie-consent__categories cookie-consent__categories--visible">
+                    ${Object.entries(this.config.categories).map(([key, category]) => `
+                        <div class="cookie-consent__category">
+                            <label class="cookie-consent__checkbox">
+                                <input type="checkbox" name="${key}" 
+                                    ${category.required ? 'checked disabled' : ''} 
+                                    ${savedConsent[key] ? 'checked' : ''}>
+                                <div>
+                                    <div class="cookie-consent__category-title">${category.title}</div>
+                                    <div class="cookie-consent__category-description">${category.description}</div>
+                                </div>
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="cookie-consent__buttons">
+                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
+                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
+                </div>
+            </div>
+        `;
+        
+        this.isSettingsVisible = true;
+    }
+
+    handleSettings() {
+        console.log('ConsentNotification: handleSettings called');
+        this.renderModal(this.config.modalTypes.FIRST_VISIT_SETTINGS);
+    }
+
+    showSecondaryBanner() {
+        console.log('ConsentNotification: showSecondaryBanner called');
+        this.renderModal(this.config.modalTypes.EXPERIENCE_IMPROVE);
+    }
+
+    openSettings() {
+        console.log('ConsentNotification: openSettings called');
+        if (!this.notification) {
+            this.createElements();
+        }
+        this.renderModal(this.config.modalTypes.MANUAL_SETTINGS);
     }
 
     show() {
         console.log('ConsentNotification: show called');
+        const modalSettings = this.config.visual.modalTypes[this.currentModalType];
+        
         this.notification.classList.add('cookie-consent--visible');
-        this.overlay.style.display = 'block';
+        if (modalSettings.showOverlay) {
+            this.overlay.style.display = 'block';
+        }
         this.isVisible = true;
-        this.isOverlayVisible = true;
-        document.body.style.overflow = 'hidden';
+        this.isOverlayVisible = modalSettings.showOverlay;
+
+        // Блокируем скроллинг если это требуется для текущего типа модального окна
+        if (modalSettings.preventScroll) {
+            // Сохраняем текущую позицию скролла
+            this._scrollPosition = window.pageYOffset;
+            // Добавляем класс для блокировки скролла
+            document.body.classList.add('cookie-consent-no-scroll');
+            // Фиксируем позицию
+            document.body.style.top = `-${this._scrollPosition}px`;
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+        }
     }
 
     hide() {
         console.log('ConsentNotification: hide called');
+        const modalSettings = this.config.visual.modalTypes[this.currentModalType];
+        
         this.notification.classList.remove('cookie-consent--visible');
         this.overlay.style.display = 'none';
         this.isVisible = false;
         this.isOverlayVisible = false;
-        document.body.style.overflow = '';
+
+        // Восстанавливаем скроллинг если он был заблокирован
+        if (modalSettings.preventScroll) {
+            // Удаляем класс блокировки
+            document.body.classList.remove('cookie-consent-no-scroll');
+            // Восстанавливаем позицию
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, this._scrollPosition);
+            this._scrollPosition = null;
+        }
 
         // Загружаем скрипты при скрытии оверлея
         if (this.pendingConsent) {
@@ -239,27 +472,13 @@ export class ConsentNotification {
             functional: false
         };
         this.saveConsent(consent);
-        this.showSecondaryBanner();
-    }
-
-    handleSettings() {
-        console.log('ConsentNotification: handleSettings called');
-        const categories = this.notification.querySelector('.cookie-consent__categories');
-        if (categories) {
-            categories.classList.toggle('cookie-consent__categories--visible');
-            this.isSettingsVisible = !this.isSettingsVisible;
-            
-            // Обновляем кнопки при открытии настроек
-            if (this.isSettingsVisible) {
-                const buttonsContainer = this.notification.querySelector('.cookie-consent__buttons');
-                buttonsContainer.innerHTML = `
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
-                `;
-                
-                // Пересоздаем обработчики событий
-                this.addEventListeners();
-            }
+        
+        // Показываем EXPERIENCE_IMPROVE только если это INITIAL или FIRST_VISIT_SETTINGS
+        if (this.currentModalType === this.config.modalTypes.INITIAL || 
+            this.currentModalType === this.config.modalTypes.FIRST_VISIT_SETTINGS) {
+            this.showSecondaryBanner();
+        } else {
+            this.hide();
         }
     }
 
@@ -274,11 +493,24 @@ export class ConsentNotification {
 
         console.log('Selected consent:', consent);
         
-        // Сохраняем настройки и применяем их
+        // Проверяем, выбраны ли все доступные категории
+        const allCategoriesSelected = Object.entries(this.config.categories)
+            .filter(([_, category]) => !category.required) // Исключаем обязательные категории
+            .every(([key]) => consent[key]);
+
+        // Сохраняем настройки
         this.saveConsent(consent);
         
-        // Просто скрываем баннер без показа вторичного
-        this.hide();
+        // Показываем EXPERIENCE_IMPROVE только если:
+        // 1. Это INITIAL или FIRST_VISIT_SETTINGS
+        // 2. Не все категории выбраны
+        if ((this.currentModalType === this.config.modalTypes.INITIAL || 
+             this.currentModalType === this.config.modalTypes.FIRST_VISIT_SETTINGS) && 
+            !allCategoriesSelected) {
+            this.showSecondaryBanner();
+        } else {
+            this.hide();
+        }
     }
 
     loadScripts(consent) {
@@ -329,63 +561,5 @@ export class ConsentNotification {
         
         // Сохраняем согласие для последующей загрузки скриптов
         this.pendingConsent = consent;
-    }
-
-    showSecondaryBanner() {
-        console.log('ConsentNotification: showSecondaryBanner called');
-        this.notification.innerHTML = `
-            <div class="cookie-consent__content">
-                <h2 class="cookie-consent__title">${this.config.texts.secondaryBanner.title}</h2>
-                <p class="cookie-consent__description">${this.config.texts.secondaryBanner.description}</p>
-                <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.secondaryBanner.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--close">${this.config.texts.secondaryBanner.keepChoice}</button>
-                </div>
-            </div>
-        `;
-        this.notification.classList.add('cookie-consent--secondary');
-        this.addEventListeners();
-        console.log('ConsentNotification: Secondary banner shown');
-    }
-
-    // Новый метод для открытия настроек в любое время
-    openSettings() {
-        console.log('ConsentNotification: openSettings called');
-        if (!this.notification) {
-            this.createElements();
-        }
-        
-        // Загружаем сохраненные настройки
-        const savedConsent = JSON.parse(localStorage.getItem('cookieConsent') || '{}');
-        
-        this.notification.innerHTML = `
-            <div class="cookie-consent__content">
-                <h2 class="cookie-consent__title">${this.config.texts.mainBanner.title}</h2>
-                <p class="cookie-consent__description">${this.config.texts.mainBanner.description}</p>
-                <div class="cookie-consent__categories cookie-consent__categories--visible">
-                    ${Object.entries(this.config.categories).map(([key, category]) => `
-                        <div class="cookie-consent__category">
-                            <label class="cookie-consent__checkbox">
-                                <input type="checkbox" name="${key}" 
-                                    ${category.required ? 'checked disabled' : ''} 
-                                    ${savedConsent[key] ? 'checked' : ''}>
-                                <div>
-                                    <div class="cookie-consent__category-title">${category.title}</div>
-                                    <div class="cookie-consent__category-description">${category.description}</div>
-                                </div>
-                            </label>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="cookie-consent__buttons">
-                    <button class="cookie-consent__button cookie-consent__button--all">${this.config.texts.settings.acceptAll}</button>
-                    <button class="cookie-consent__button cookie-consent__button--selected">${this.config.texts.settings.acceptSelected}</button>
-                </div>
-            </div>
-        `;
-        
-        this.isSettingsVisible = true;
-        this.addEventListeners();
-        this.show();
     }
 } 
