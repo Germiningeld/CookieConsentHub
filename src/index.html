@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookie Consent Hub - Демонстрация</title>
-    <link rel="stylesheet" href="css/cookie-consent.css">
+    <link rel="stylesheet" href="./css/cookie-consent.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -160,23 +160,15 @@ cookieConsent.openSettings();</code></pre>
     </div>
 
     <script type="module">
-        import { CookieConsent } from './js/cookie-consent.js';
+        import { ConsentNotification } from './js/consent-notification.js';
         
         // Инициализация
-        const cookieConsent = CookieConsent.init({
-            overlay: {
-                blur: '5px',
-                background: 'rgba(0, 0, 0, 0.5)'
-            }
-        });
+        const cookieConsent = new ConsentNotification();
         
         // Добавляем обработчик для кнопки настроек
         document.getElementById('openSettings').addEventListener('click', () => {
-            cookieConsent.notification.openSettings();
+            cookieConsent.openSettings();
         });
-
-        // Очищаем сохраненные настройки для демонстрации
-        localStorage.removeItem('cookieConsent');
     </script>
 </body>
 </html> 

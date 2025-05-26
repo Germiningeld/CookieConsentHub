@@ -1,0 +1,200 @@
+// Импорт переменных и миксинов
+@import 'variables'
+@import 'mixins'
+
+// Стили оверлея
+.cookie-consent-overlay
+  position: fixed
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  background: rgba(0, 0, 0, 0.5)
+  backdrop-filter: blur(5px)
+  -webkit-backdrop-filter: blur(5px)
+  z-index: 9998
+  display: none
+
+// Основные стили
+.cookie-consent
+  position: fixed
+  top: 50%
+  left: 50%
+  transform: translate(-50%, -50%)
+  z-index: 9999
+  background: #fff
+  color: #333
+  border-radius: 12px
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15)
+  max-width: 500px
+  width: 90%
+  opacity: 0
+  visibility: hidden
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out
+
+  &--visible
+    opacity: 1
+    visibility: visible
+
+  &--secondary
+    max-width: 400px
+
+    .cookie-consent__buttons
+      flex-direction: column
+      gap: 12px
+
+  &--top
+    top: 0
+    bottom: auto
+    transform: translateX(-50%)
+
+  &--bottom
+    top: auto
+    bottom: 0
+    transform: translateX(-50%)
+
+  &__content
+    padding: 30px
+
+  &__title
+    margin: 0 0 15px
+    font-size: 1.5rem
+    font-weight: 600
+    color: #333
+
+  &__description
+    margin: 0 0 25px
+    font-size: 1rem
+    line-height: 1.6
+    color: #666
+
+  &__categories
+    display: none
+    margin-bottom: 20px
+    padding: 20px
+    background: rgba(0, 0, 0, 0.02)
+    border-radius: 8px
+
+    &--visible
+      display: block
+
+  &__category
+    margin-bottom: 15px
+
+    &:last-child
+      margin-bottom: 0
+
+  &__checkbox
+    display: flex
+    align-items: center
+    cursor: pointer
+
+    input[type="checkbox"]
+      margin-right: 10px
+
+  &__category-title
+    font-weight: 500
+    margin-bottom: 5px
+
+  &__category-description
+    font-size: 0.9rem
+    color: #666
+
+  &__buttons
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+  &__button
+    padding: 12px 20px
+    border: none
+    border-radius: 8px
+    font-size: 1rem
+    font-weight: 500
+    cursor: pointer
+    transition: all 0.2s ease
+    text-align: center
+
+    &--all
+      background: #007bff
+      color: #fff
+
+      &:hover
+        background: #0056b3
+
+    &--necessary
+      background: #f5f5f5
+      color: #333
+
+      &:hover
+        background: #e0e0e0
+
+    &--selected
+      background: #f5f5f5
+      color: #333
+
+      &:hover
+        background: #e0e0e0
+
+    &--close
+      background: #f5f5f5
+      color: #333
+
+      &:hover
+        background: #e0e0e0
+
+    &--settings
+      background: transparent
+      color: #007bff
+      border: 1px solid #007bff
+
+      &:hover
+        background: rgba(0, 123, 255, 0.1)
+
+  &__link
+    color: #666
+    text-decoration: none
+    font-size: 1rem
+    font-weight: 500
+    padding: 12px 20px
+    border-radius: 8px
+    transition: all 0.2s ease
+
+    &:hover
+      color: #333
+      text-decoration: underline
+
+    &--settings
+      margin-left: 0
+
+// Темная тема
+.cookie-consent--dark
+  background: #333
+  color: #fff
+  border-color: #444
+
+  .cookie-consent__categories
+    background: rgba(255, 255, 255, 0.05)
+
+  .cookie-consent__button
+    &--necessary
+      background: #444
+      color: #fff
+
+      &:hover
+        background: #555
+
+    &--settings
+      color: #fff
+      border-color: #fff
+
+      &:hover
+        background: rgba(255, 255, 255, 0.1)
+
+// Адаптивность
+@media (max-width: 768px)
+  .cookie-consent
+    width: 95%
+
+    &__content
+      padding: 20px 

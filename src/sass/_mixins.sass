@@ -1,8 +1,12 @@
-// Миксины для флекс-контейнеров
-@mixin flex-start
-  display: flex
-  align-items: flex-start
+@mixin heading($font-size: 1.5rem, $font-weight: 600, $line-height: 1.2, $color: inherit)
+  font-size: $font-size
+  font-weight: $font-weight
+  line-height: $line-height
+  color: $color
+  margin: 0 0 1rem
+  @include transition(color)
 
+// Flexbox mixins
 @mixin flex-center
   display: flex
   align-items: center
@@ -13,48 +17,90 @@
   align-items: center
   justify-content: space-between
 
-// Миксин для заголовков
-@mixin heading($size)
-  font-size: $size
-  font-weight: 600
-  line-height: 1.2
-  margin: 0
+@mixin flex-start
+  display: flex
+  align-items: center
+  justify-content: flex-start
 
-// Миксин для кнопок
+// Button mixins
 @mixin button-base
   display: inline-flex
   align-items: center
   justify-content: center
-  padding: 0.5rem 1rem
+  padding: 0.75rem 1.5rem
   border: none
   border-radius: 4px
-  font-size: 0.875rem
+  font-size: 1rem
   font-weight: 500
   cursor: pointer
-  transition: background-color 0.2s, color 0.2s
   text-decoration: none
+  @include transition(background-color, 0.2s)
 
-@mixin button-variant($bg, $color, $hover-bg)
-  background-color: $bg
-  color: $color
+@mixin button-variant($bg-color, $text-color, $hover-color)
+  background-color: $bg-color
+  color: $text-color
   &:hover
-    background-color: $hover-bg
+    background-color: $hover-color
 
-// Миксин для переходов
-@mixin transition($property, $duration)
-  transition: $property $duration ease-in-out
+// Transition mixin
+@mixin transition($property: all, $duration: 0.3s, $timing: ease)
+  transition: $property $duration $timing
 
-// Миксин для медиа-запросов
+// Media query mixins
 @mixin respond-to($breakpoint)
   @if $breakpoint == sm
-    @media (min-width: 576px)
+    @media screen and (min-width: 576px)
       @content
   @else if $breakpoint == md
-    @media (min-width: 768px)
+    @media screen and (min-width: 768px)
       @content
   @else if $breakpoint == lg
-    @media (min-width: 992px)
+    @media screen and (min-width: 992px)
       @content
   @else if $breakpoint == xl
-    @media (min-width: 1200px)
-      @content 
+    @media screen and (min-width: 1200px)
+      @content
+
+@mixin mobile
+  @media screen and (max-width: 767px)
+    @content
+
+@mixin tablet
+  @media screen and (min-width: 768px) and (max-width: 1023px)
+    @content
+
+@mixin desktop
+  @media screen and (min-width: 1024px)
+    @content
+
+// Visibility mixins
+@mixin visually-hidden
+  position: absolute
+  width: 1px
+  height: 1px
+  margin: -1px
+  padding: 0
+  overflow: hidden
+  clip: rect(0, 0, 0, 0)
+  border: 0
+
+// Modal mixins
+@mixin modal-base
+  position: fixed
+  z-index: 1000
+  background: #fff
+  border-radius: 8px
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15)
+  @include transition(transform, 0.3s, ease)
+
+@mixin overlay-base
+  position: fixed
+  top: 0
+  left: 0
+  width: 100%
+  height: 100%
+  background: rgba(0, 0, 0, 0.5)
+  z-index: 999
+  opacity: 0
+  visibility: hidden
+  @include transition(opacity visibility)
