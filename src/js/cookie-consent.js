@@ -101,6 +101,105 @@ export class CookieConsent {
     }
     return consent;
   }
+
+  loadScripts(categories = []) {
+    if (!Array.isArray(categories)) {
+      categories = [categories];
+    }
+
+    // Фильтруем только разрешенные категории
+    const enabledCategories = categories.filter(category => 
+      this.consent[category] === true && 
+      this.config.categories[category]?.scripts
+    );
+
+    // Загружаем скрипты для каждой категории
+    enabledCategories.forEach(category => {
+      const categoryConfig = this.config.categories[category];
+      
+      // Отправляем событие в GTM
+      if (typeof dataLayer !== 'undefined') {
+        dataLayer.push({
+          event: 'cookieConsentScriptLoaded',
+          category: category,
+          scripts: categoryConfig.scripts,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Отправляем событие в Matomo
+      if (typeof _paq !== 'undefined') {
+        _paq.push(['trackEvent', 'CookieConsent', 'scriptLoaded', category, JSON.stringify(categoryConfig.scripts)]);
+      }
+
+      // Загружаем скрипты
+      categoryConfig.scripts.forEach(script => {
+        this.loadScript(script);
+      });
+    });
+
+    return this;
+  }
+
+  loadScript(script) {
+    if (!script) return this;
+
+    switch (script.type) {
+      case 'file':
+        this._loadFileScript(script.path);
+        break;
+      case 'inline':
+        this._loadInlineScript(script.code);
+        break;
+      case 'event':
+        this._triggerScriptEvent(script);
+        break;
+      default:
+        console.warn('Unknown script type:', script.type);
+    }
+
+    return this;
+  }
+
+  _triggerScriptEvent(script) {
+    const { name, data = {} } = script;
+    
+    // Отправляем событие в GTM если включен
+    if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
+      dataLayer.push({
+        event: name,
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Отправляем событие в Matomo если включен
+    if (this.config.tagManagers?.matomo?.enabled && typeof _paq !== 'undefined') {
+      _paq.push(['trackEvent', 'CookieConsent', name, JSON.stringify(data)]);
+    }
+
+    // Отправляем кастомное событие
+    window.dispatchEvent(new CustomEvent(`cookieConsent:${name}`, {
+      detail: data
+    }));
+  }
+
+  _loadFileScript(path) {
+    if (!path) return;
+    
+    const script = document.createElement('script');
+    script.src = path;
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
+  _loadInlineScript(code) {
+    if (!code) return;
+    
+    const script = document.createElement('script');
+    script.textContent = code;
+    document.head.appendChild(script);
+  }
 }
 
 export class ConsentStorage {
