@@ -10,13 +10,13 @@ export const cookieConsentConfig = {
                     type: 'file',
                     path: '/js/necessary.js'
                 },
-                // {
-                //     type: 'inline',
-                //     code: `
-                //         console.log('Необходимый скрипт загружен');
-                //         // Здесь может быть любой JavaScript код
-                //     `
-                // }
+                {
+                    type: 'inline',
+                    code: `
+                        console.log('Необходимый скрипт загружен');
+                        // Здесь может быть любой JavaScript код
+                    `
+                }
             ]
         },
         analytics: {
@@ -28,17 +28,17 @@ export const cookieConsentConfig = {
                     type: 'file',
                     path: '/js/analytics.js'
                 },
-                // {
-                //     type: 'inline',
-                //     code: `
-                //         console.log('Аналитический скрипт загружен');
-                //         // Google Analytics код
-                //         window.dataLayer = window.dataLayer || [];
-                //         function gtag(){dataLayer.push(arguments);}
-                //         gtag('js', new Date());
-                //         gtag('config', 'GA-MEASUREMENT-ID');
-                //     `
-                // }
+                {
+                    type: 'inline',
+                    code: `
+                        console.log('Аналитический скрипт загружен');
+                        // Google Analytics код
+                        window.dataLayer = window.dataLayer || [];
+                        function gtag(){dataLayer.push(arguments);}
+                        gtag('js', new Date());
+                        gtag('config', 'GA-MEASUREMENT-ID');
+                    `
+                }
             ]
         },
         marketing: {
