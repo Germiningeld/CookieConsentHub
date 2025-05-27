@@ -1,134 +1,136 @@
-# Настройки Cookie Consent Hub
+# Настройки Cookie Consent Hub v2.0
 
-## Общие настройки (cookie)
+## Основная инициализация
 
 ```javascript
-cookie: {
-    name: 'cookie-consent',        // Имя cookie для хранения согласия
-    expiration: 365,               // Срок действия в днях
-    domain: '',                    // Домен для cookie (пусто = текущий домен)
-    path: '/',                     // Путь для cookie
-    sameSite: 'Lax',              // Политика SameSite (Strict, Lax, None)
-    secure: false                  // Использовать secure флаг
-}
+// Простая инициализация
+const cookieConsent = CookieConsent.init();
+
+// С кастомными настройками
+const cookieConsent = CookieConsent.init({
+    simpleMode: false,
+    visual: { /* настройки */ },
+    categories: { /* категории */ },
+    texts: { /* тексты */ },
+    tagManagers: { /* интеграции */ }
+});
 ```
 
-## Настройки модальных окон
+## Режимы работы
 
-### Общие настройки для всех модальных окон
+### Обычный режим (по умолчанию)
 
 ```javascript
-modals: {
-    // Настройки оверлея
-    overlay: {
-        show: true,                // Показывать оверлей
-        blur: 5,                   // Значение размытия в пикселях
-        color: 'rgba(0, 0, 0, 0.5)' // Цвет оверлея
-    },
-
-    // Общие настройки для всех модальных окон
-    common: {
-        zIndex: 9999,              // z-index модального окна
-        overlayZIndex: 9998,       // z-index оверлея
-        maxWidth: '500px',         // Максимальная ширина
-        borderRadius: '12px',      // Скругление углов
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)', // Тень
-        animation: 'fade',         // Тип анимации (fade, slide)
-        allowClose: true,          // Разрешить закрытие
-        preventScroll: true        // Блокировать скролл
-    }
-}
+CookieConsent.init({
+    simpleMode: false
+});
 ```
 
-### Настройки для каждого типа модального окна
+- Показывает полноценные модальные окна
+- Требует явного согласия пользователя
+- Поддерживает все типы модальных окон
 
-#### INITIAL (Начальное окно)
+### Простой режим
 
 ```javascript
-initial: {
-    position: 'center',           // Позиция (center, top, bottom)
-    showOverlay: true,            // Показывать оверлей
-    preventScroll: true,          // Блокировать скролл
-    allowClose: false,            // Запретить закрытие
-    title: 'Использование cookie', // Заголовок
-    description: '...',           // Описание
-    buttons: {
-        acceptAll: {
-            text: 'Принять все',   // Текст кнопки
-            type: 'primary'        // Тип кнопки
-        },
-        settings: {
-            text: 'Настроить',     // Текст кнопки
-            type: 'secondary'      // Тип кнопки
+CookieConsent.init({
+    simpleMode: true
+});
+```
+
+- Автоматически принимает все согласия
+- Показывает только информационное уведомление
+- Загружает все скрипты сразу
+
+## Типы модальных окон
+
+### INITIAL - Начальное окно согласия
+
+```javascript
+modalTypes: {
+    INITIAL: 'initial'
+}
+
+visual: {
+    modalTypes: {
+        initial: {
+            position: 'center',          // center, top, bottom
+            maxWidth: '500px',           
+            showOverlay: true,           // Показывать затемнение
+            allowClose: true,            // Разрешить закрытие
+            closeOnOverlayClick: true,   // Закрывать по клику на оверлей
+            animation: 'fade',           // fade, slide, none
+            preventScroll: true,         // Блокировать скролл
+            showExperienceImprove: true  // Показывать баннер улучшения
         }
     }
 }
 ```
 
-#### FIRST_VISIT_SETTINGS (Настройки при первом посещении)
+### MANUAL_SETTINGS - Настройки по требованию
 
 ```javascript
-firstVisitSettings: {
-    position: 'center',           // Позиция
-    showOverlay: true,            // Показывать оверлей
-    preventScroll: true,          // Блокировать скролл
-    allowClose: true,             // Разрешить закрытие
-    title: 'Настройки cookie',    // Заголовок
-    description: '...',           // Описание
-    buttons: {
-        save: {
-            text: 'Сохранить',     // Текст кнопки
-            type: 'primary'        // Тип кнопки
-        },
-        cancel: {
-            text: 'Отмена',        // Текст кнопки
-            type: 'secondary'      // Тип кнопки
+modalTypes: {
+    MANUAL_SETTINGS: 'manualSettings'
+}
+
+visual: {
+    modalTypes: {
+        manualSettings: {
+            position: 'center',
+            maxWidth: '500px',
+            showOverlay: true,
+            allowClose: true,
+            closeOnOverlayClick: true,
+            animation: 'fade',
+            preventScroll: true,
+            showExperienceImprove: true  // Показывать после выбора минимальных
         }
     }
 }
 ```
 
-#### EXPERIENCE_IMPROVE (Улучшение опыта)
+### EXPERIENCE_IMPROVE - Улучшение опыта
 
 ```javascript
-experienceImprove: {
-    position: 'bottom',           // Позиция (top, bottom)
-    showOverlay: false,           // Не показывать оверлей
-    preventScroll: false,         // Не блокировать скролл
-    allowClose: true,             // Разрешить закрытие
-    title: 'Улучшение опыта',     // Заголовок
-    description: '...',           // Описание
-    buttons: {
-        accept: {
-            text: 'Принять',       // Текст кнопки
-            type: 'primary'        // Тип кнопки
-        },
-        settings: {
-            text: 'Настроить',     // Текст кнопки
-            type: 'secondary'      // Тип кнопки
+modalTypes: {
+    EXPERIENCE_IMPROVE: 'experienceImprove'
+}
+
+visual: {
+    modalTypes: {
+        experienceImprove: {
+            position: 'center',          // Обычно center или bottom
+            maxWidth: '400px',           // Меньше чем основные модальные окна
+            showOverlay: false,          // Обычно без затемнения
+            allowClose: true,
+            closeOnOverlayClick: false,
+            animation: 'slide',
+            preventScroll: false,        // Не блокировать скролл
+            showExperienceImprove: false // Это сам баннер улучшения
         }
     }
 }
 ```
 
-#### MANUAL_SETTINGS (Ручные настройки)
+### SIMPLE_NOTIFICATION - Простое уведомление
 
 ```javascript
-manualSettings: {
-    position: 'center',           // Позиция
-    showOverlay: true,            // Показывать оверлей
-    preventScroll: true,          // Блокировать скролл
-    allowClose: true,             // Разрешить закрытие
-    title: 'Настройки cookie',    // Заголовок
-    description: '...',           // Описание
-    buttons: {
-        save: {
-            text: 'Сохранить',     // Текст кнопки
-            type: 'primary'        // Тип кнопки
-        },
-        cancel: {
-            text: 'Отмена',        // Текст кнопки
-            type: 'secondary'      // Тип кнопки
+modalTypes: {
+    SIMPLE_NOTIFICATION: 'simpleNotification'
+}
+
+visual: {
+    modalTypes: {
+        simpleNotification: {
+            position: 'bottom',          // Обычно в нижней части
+            maxWidth: '500px',
+            showOverlay: false,          // Без затемнения
+            allowClose: false,           // Нельзя закрыть
+            closeOnOverlayClick: false,
+            animation: 'slide',
+            preventScroll: false,
+            showExperienceImprove: false
         }
     }
 }
@@ -136,101 +138,367 @@ manualSettings: {
 
 ## Настройки категорий cookie
 
+### Структура категории
+
+```javascript
+categories: {
+    categoryName: {
+        title: 'Название категории',
+        description: 'Описание категории.\nМожет содержать переносы строк.',
+        required: false,              // true для обязательных категорий
+        scripts: [
+            // Массив скриптов для загрузки
+        ]
+    }
+}
+```
+
+### Типы скриптов
+
+#### Файловые скрипты
+
+```javascript
+{
+    type: 'file',
+    path: '/js/analytics.js'         // Относительный или абсолютный путь
+}
+
+// Или с полным URL
+{
+    type: 'file',
+    path: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID'
+}
+```
+
+#### Встроенные скрипты
+
+```javascript
+{
+    type: 'inline',
+    code: `
+        console.log('Script loaded');
+        // Ваш JavaScript код
+    `
+}
+```
+
+#### События GTM
+
+```javascript
+{
+    type: 'gtm',
+    name: 'loadAnalytics',
+    data: {
+        category: 'analytics',
+        source: 'cookie-consent'
+    }
+}
+```
+
+#### Кастомные события
+
+```javascript
+{
+    type: 'event',
+    name: 'customAnalyticsEvent',
+    data: {
+        provider: 'google',
+        category: 'analytics'
+    }
+}
+```
+
+### Пример полной конфигурации категорий
+
 ```javascript
 categories: {
     necessary: {
-        title: 'Необходимые',      // Название категории
-        description: '...',        // Описание
-        required: true,            // Обязательная категория
-        enabled: true              // Включена по умолчанию
+        title: 'Необходимые',
+        description: 'Эти файлы cookie необходимы для работы сайта и не могут быть отключены.',
+        required: true,
+        scripts: [
+            {
+                type: 'file',
+                path: '/js/scripts/necessary.js'
+            }
+        ]
     },
-    preferences: {
-        title: 'Предпочтения',     // Название категории
-        description: '...',        // Описание
-        required: false,           // Не обязательная категория
-        enabled: false             // Выключена по умолчанию
-    },
-    statistics: {
-        title: 'Статистика',       // Название категории
-        description: '...',        // Описание
-        required: false,           // Не обязательная категория
-        enabled: false             // Выключена по умолчанию
+    analytics: {
+        title: 'Аналитика',
+        description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая анонимную информацию о его использовании.',
+        required: false,
+        scripts: [
+            {
+                type: 'file',
+                path: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID'
+            },
+            {
+                type: 'inline',
+                code: `
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', 'GA_MEASUREMENT_ID');
+                `
+            },
+            {
+                type: 'event',
+                name: 'analyticsLoaded',
+                data: { category: 'analytics' }
+            }
+        ]
     },
     marketing: {
-        title: 'Маркетинг',        // Название категории
-        description: '...',        // Описание
-        required: false,           // Не обязательная категория
-        enabled: false             // Выключена по умолчанию
+        title: 'Маркетинг',
+        description: 'Используются для отслеживания посетителей на веб-сайтах с целью показа релевантной рекламы.',
+        required: false,
+        scripts: [
+            {
+                type: 'file',
+                path: '/js/scripts/facebook-pixel.js'
+            },
+            {
+                type: 'gtm',
+                name: 'loadMarketing',
+                data: { category: 'marketing' }
+            }
+        ]
     }
 }
 ```
 
-## Настройки тем
+## Настройки текстов
+
+### Основной баннер
 
 ```javascript
-theme: {
-    // Светлая тема (по умолчанию)
-    light: {
-        background: '#ffffff',     // Фон модального окна
-        text: '#333333',          // Цвет текста
-        title: '#2c3e50',         // Цвет заголовка
-        description: '#666666',    // Цвет описания
-        button: {
-            primary: {
-                background: '#007bff',  // Фон основной кнопки
-                text: '#ffffff',        // Текст основной кнопки
-                hover: '#0056b3'        // Цвет при наведении
-            },
-            secondary: {
-                background: '#f5f5f5',   // Фон вторичной кнопки
-                text: '#333333',        // Текст вторичной кнопки
-                hover: '#e0e0e0'        // Цвет при наведении
-            }
-        },
-        overlay: 'rgba(0, 0, 0, 0.5)'  // Цвет оверлея
-    },
-
-    // Темная тема
-    dark: {
-        background: '#333333',     // Фон модального окна
-        text: '#ffffff',          // Цвет текста
-        title: '#ffffff',         // Цвет заголовка
-        description: '#cccccc',    // Цвет описания
-        button: {
-            primary: {
-                background: '#007bff',  // Фон основной кнопки
-                text: '#ffffff',        // Текст основной кнопки
-                hover: '#0056b3'        // Цвет при наведении
-            },
-            secondary: {
-                background: '#444444',   // Фон вторичной кнопки
-                text: '#ffffff',        // Текст вторичной кнопки
-                hover: '#555555'        // Цвет при наведении
-            }
-        },
-        overlay: 'rgba(0, 0, 0, 0.7)'  // Цвет оверлея
+texts: {
+    mainBanner: {
+        title: 'Настройки файлов cookie',
+        description: 'Мы используем файлы cookie для улучшения вашего опыта на нашем сайте.\nПожалуйста, выберите, какие файлы cookie вы хотите принять.',
+        acceptAll: 'Принять все',
+        acceptNecessary: 'Только необходимые',
+        settings: 'Настроить предпочтения'
     }
 }
 ```
 
-## CSS-переменные
+### Баннер улучшения опыта
+
+```javascript
+texts: {
+    experienceImprove: {
+        title: 'Улучшите свой опыт',
+        description: 'Вы можете улучшить свой опыт на сайте, разрешив использование дополнительных файлов cookie. Это поможет нам сделать сайт более удобным и персонализированным.',
+        acceptAll: 'Принять все',
+        keepChoice: 'Оставить текущий выбор'
+    }
+}
+```
+
+### Настройки
+
+```javascript
+texts: {
+    settings: {
+        title: 'Настройки cookie',
+        description: 'Выберите, какие файлы cookie вы хотите разрешить на этом сайте. Вы можете изменить эти настройки в любое время.',
+        acceptAll: 'Принять все',
+        acceptSelected: 'Сохранить выбор'
+    }
+}
+```
+
+### Простое уведомление
+
+```javascript
+texts: {
+    simpleNotification: {
+        title: 'Используем куки и рекомендательные технологии',
+        description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="/privacy" class="cookie-consent__link">Подробнее</a>',
+        acceptButton: 'OK'
+    }
+}
+```
+
+## Интеграция с системами аналитики
+
+### Google Tag Manager
+
+```javascript
+tagManagers: {
+    gtm: {
+        enabled: true,
+        id: 'GTM-XXXXXXX',           // Ваш GTM ID
+        events: {
+            consent: 'cookieConsent',  // Событие изменения согласия
+            settings: 'cookieSettings' // Событие открытия настроек
+        },
+        dataLayer: 'dataLayer'       // Имя dataLayer
+    }
+}
+```
+
+### Matomo
+
+```javascript
+tagManagers: {
+    matomo: {
+        enabled: true,
+        siteId: '1',                 // ID сайта в Matomo
+        trackerUrl: 'https://your-matomo.com/'
+    }
+}
+```
+
+## Настройки внешнего вида
+
+### Оверлей
+
+```javascript
+visual: {
+    overlay: {
+        blur: '5px',                 // Размытие фона
+        color: 'rgba(0, 0, 0, 0.5)', // Цвет затемнения
+        zIndex: 9998                 // z-index оверлея
+    }
+}
+```
+
+### Модальное окно
+
+```javascript
+visual: {
+    modal: {
+        zIndex: 9999,                // z-index модального окна
+        allowClose: true,            // Глобальная настройка закрытия
+        maxWidth: '500px',           // Глобальная максимальная ширина
+        borderRadius: '12px',        // Скругление углов
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)' // Тень
+    }
+}
+```
+
+## API методы
+
+### Статические методы
+
+```javascript
+// Инициализация
+CookieConsent.init(options);
+
+// Проверка согласия
+CookieConsent.hasConsent('analytics'); // true/false
+
+// Получение всех согласий
+CookieConsent.getConsent(); // { necessary: true, analytics: false, ... }
+
+// Управление модальным окном
+CookieConsent.openSettings();
+CookieConsent.show();
+CookieConsent.hide();
+```
+
+### События браузера
+
+```javascript
+// Изменение согласия
+window.addEventListener('cookieConsent', (event) => {
+    console.log('Consent changed:', event.detail);
+});
+
+// Кастомные события из скриптов
+window.addEventListener('cookieConsent:analyticsLoaded', (event) => {
+    console.log('Analytics loaded:', event.detail);
+});
+```
+
+## Отладка и диагностика
+
+### Включение отладки
+
+```javascript
+// Включить режим отладки
+window.__COOKIE_CONSENT_DEBUG__ = true;
+```
+
+### Функции отладки
+
+```javascript
+// Проверить состояние оверлея
+debugCookieConsent.checkOverlay();
+
+// Проверить состояние модального окна
+debugCookieConsent.checkModal();
+
+// Получить экземпляр
+const instance = debugCookieConsent.getInstance();
+
+// Управление модальным окном
+debugCookieConsent.openSettings();
+debugCookieConsent.testHide();
+
+// Ручное управление оверлеем
+debugCookieConsent.showOverlay();
+debugCookieConsent.hideOverlay();
+```
+
+## CSS переменные для кастомизации
 
 ```css
 :root {
   /* Оверлей */
   --cookie-consent-overlay-color: rgba(0, 0, 0, 0.5);
   --cookie-consent-blur: 5px;
-
-  /* z-index */
-  --cookie-consent-z-index: 9999;
   --cookie-consent-overlay-z-index: 9998;
 
-  /* Размеры и внешний вид */
+  /* Модальное окно */
+  --cookie-consent-z-index: 9999;
   --cookie-consent-max-width: 500px;
   --cookie-consent-border-radius: 12px;
   --cookie-consent-box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 
-  /* Скролл */
-  --cookie-consent-scrollbar-width: 0px;
+  /* Скроллбар модального окна */
+  --cookie-consent-scrollbar-width: 6px;
 }
+
+/* Темная тема */
+.cookie-consent--dark {
+  background: #333333;
+  color: #ffffff;
+}
+```
+
+## Хранение данных
+
+### Формат данных в localStorage
+
+```javascript
+{
+    "is_cookies_accepted": 1,
+    "timestamp": 1640995200000,
+    "necessary": true,
+    "analytics": false,
+    "marketing": false,
+    "functional": true
+}
+```
+
+### Срок действия
+
+- Согласие действует **24 часа**
+- После истечения срока пользователю снова показывается баннер
+- Данные автоматически удаляются при истечении срока
+
+### Очистка cookie
+
+Система автоматически удаляет неавторизованные cookie при изменении согласия:
+
+```javascript
+// Список cookie, требующих согласия
+const consentRequiredCookies = {
+    analytics: ['_ga', '_gid', '_gat', '_ym_uid', '_ym_d'],
+    marketing: ['_fbp', '_fbc'],
+    functional: ['PHPSESSID'] // если используется для функций, требующих согласия
+};
 ```

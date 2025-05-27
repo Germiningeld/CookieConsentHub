@@ -1,80 +1,76 @@
+/**
+ * Конфигурация для CookieConsent
+ * @version 2.0.0
+ */
+
 export const cookieConsentConfig = {
     // Типы модальных окон
     modalTypes: {
-        INITIAL: 'initial',           // Первоначальное окно
-        FIRST_VISIT_SETTINGS: 'firstVisitSettings', // Настройка при первичном посещении
-        EXPERIENCE_IMPROVE: 'experienceImprove',    // Улучшите свой опыт
-        MANUAL_SETTINGS: 'manualSettings',          // Настройки по кнопке
-        SIMPLE_NOTIFICATION: 'simpleNotification'   // Простое уведомление о cookie
+        INITIAL: 'initial',                    // Первоначальное окно
+        MANUAL_SETTINGS: 'manualSettings',     // Настройки по кнопке
+        EXPERIENCE_IMPROVE: 'experienceImprove', // Улучшите свой опыт
+        SIMPLE_NOTIFICATION: 'simpleNotification' // Простое уведомление о cookie
     },
 
     // Настройки визуальных эффектов
     visual: {
         // Настройки оверлея
         overlay: {
-            blur: '0',              // Значение размытия для оверлея
-            color: 'rgba(0, 0, 0, 0.3)', // Цвет оверлея
-            zIndex: 9998             // z-index оверлея
+            blur: '0',                         // Значение размытия для оверлея
+            color: 'rgba(0, 0, 0, 0.3)',       // Цвет оверлея
+            zIndex: 9998                       // z-index оверлея
         },
+        
         // Настройки модального окна
         modal: {
-            zIndex: 9999,            // z-index модального окна
-            allowClose: true,        // Разрешить закрытие модального окна
-            maxWidth: '500px',       // Максимальная ширина модального окна
-            borderRadius: '12px',    // Скругление углов
+            zIndex: 9999,                      // z-index модального окна
+            allowClose: true,                  // Разрешить закрытие модального окна
+            maxWidth: '500px',                 // Максимальная ширина модального окна
+            borderRadius: '12px',              // Скругление углов
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)' // Тень модального окна
         },
+        
         // Настройки для каждого типа модального окна
         modalTypes: {
             initial: {
-                position: 'center',    // Позиция модального окна: center (центр), top (верх), bottom (низ)
-                maxWidth: '500px',     // Максимальная ширина модального окна
-                showOverlay: true,    // Показывать затемнение фона
-                allowClose: true,      // Разрешить закрытие окна
-                closeOnOverlayClick: true, // Закрывать при клике на затемнение
-                animation: 'fade',     // Тип анимации: fade (плавное появление), slide (слайд), none (без анимации)
-                preventScroll: true,  // Блокировать прокрутку страницы
-                showExperienceImprove: true // Показывать баннер улучшения опыта после выбора настроек
-            },
-            firstVisitSettings: {
-                position: 'center',    // Позиция модального окна
-                maxWidth: '500px',     // Максимальная ширина
-                showOverlay: true,     // Показывать затемнение фона
-                allowClose: true,      // Разрешить закрытие
-                closeOnOverlayClick: true, // Закрывать при клике на затемнение
-                animation: 'fade',     // Тип анимации
-                preventScroll: true,   // Блокировать прокрутку страницы
-                showExperienceImprove: true // Показывать баннер улучшения опыта после выбора настроек
-            },
-            experienceImprove: {
-                position: 'center',    // Позиция модального окна (только top или bottom)
-                maxWidth: '400px',     // Уменьшенная максимальная ширина для баннера
-                showOverlay: false,    // Не показывать затемнение для баннера
-                allowClose: true,      // Разрешить закрытие
-                closeOnOverlayClick: true, // Закрывать при клике на затемнение
-                animation: 'slide',    // Анимация появления снизу
-                preventScroll: false,  // Не блокировать прокрутку для баннера
-                showExperienceImprove: false // Не показывать баннер улучшения опыта (это сам баннер)
+                position: 'center',            // Позиция: center, top, bottom
+                maxWidth: '500px',             // Максимальная ширина
+                showOverlay: true,             // Показывать затемнение фона
+                allowClose: true,              // Разрешить закрытие окна
+                closeOnOverlayClick: true,     // Закрывать при клике на затемнение
+                animation: 'fade',             // Тип анимации: fade, slide, none
+                preventScroll: true,           // Блокировать прокрутку страницы
+                showExperienceImprove: true    // Показывать баннер улучшения опыта
             },
             manualSettings: {
-                position: 'center',    // Позиция модального окна
-                maxWidth: '500px',     // Максимальная ширина
-                showOverlay: true,     // Показывать затемнение фона
-                allowClose: true,      // Разрешить закрытие
-                closeOnOverlayClick: true, // Закрывать при клике на затемнение
-                animation: 'fade',     // Тип анимации
-                preventScroll: true,   // Блокировать прокрутку страницы
-                showExperienceImprove: true // Показывать баннер улучшения опыта после выбора настроек
+                position: 'center',
+                maxWidth: '500px',
+                showOverlay: true,
+                allowClose: true,
+                closeOnOverlayClick: true,
+                animation: 'fade',
+                preventScroll: true,
+                showExperienceImprove: true
+            },
+            experienceImprove: {
+                position: 'center',
+                maxWidth: '400px',
+                showOverlay: false,            // Не показывать затемнение для баннера
+                allowClose: true,
+                closeOnOverlayClick: false,
+                animation: 'slide',
+                preventScroll: false,          // Не блокировать прокрутку для баннера
+                showExperienceImprove: false   // Это сам баннер
             },
             simpleNotification: {
-                position: 'bottom',    // Позиция модального окна
-                maxWidth: '500px',     // Максимальная ширина
-                showOverlay: false,    // Не показывать затемнение
-                allowClose: false,      // Не разрешать закрытие
-                closeOnOverlayClick: false, // Не закрывать при клике на затемнение
-                animation: 'slide',    // Анимация появления снизу
-                preventScroll: false,  // Не блокировать прокрутку
-                showExperienceImprove: false // Не показывать баннер улучшения опыта
+                position: 'bottom',
+                maxWidth: '500px',
+                showOverlay: false,
+                allowClose: false,             // Не разрешать закрытие
+                closeOnOverlayClick: false,
+                animation: 'slide',
+                preventScroll: false,
+                showExperienceImprove: false
             }
         }
     },
@@ -85,18 +81,23 @@ export const cookieConsentConfig = {
             enabled: true,
             id: 'GTM-5S7NM4HM',
             events: {
-                consent: 'cookieConsent'           // Основное событие согласия
+                consent: 'cookieConsent',       // Основное событие согласия
+                settings: 'cookieSettings'      // Событие открытия настроек
             },
             dataLayer: 'dataLayer'
         },
-        matomo: false  // Использовать Matomo Tag Manager
+        matomo: {
+            enabled: false,
+            siteId: null,
+            trackerUrl: null
+        }
     },
 
-    // Настройки категорий
+    // Настройки категорий cookie
     categories: {
         necessary: {
             title: 'Необходимые',
-            description: 'Эти файлы cookie необходимы для работы сайта и не могут быть отключены.',
+            description: 'Эти файлы cookie необходимы для работы сайта и не могут быть отключены. Они обычно устанавливаются только в ответ на ваши действия.',
             required: true,
             scripts: [
                 {
@@ -107,7 +108,7 @@ export const cookieConsentConfig = {
         },
         analytics: {
             title: 'Аналитика',
-            description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая информацию о его использовании.',
+            description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая информацию о его использовании. Все данные анонимизированы.',
             required: false,
             scripts: [
                 {
@@ -115,10 +116,10 @@ export const cookieConsentConfig = {
                     path: '/js/scripts/analytics.js'
                 },
                 // {
-                //     type: 'gtm',
+                //     type: 'event',
                 //     name: 'loadAnalytics',
                 //     data: {
-                //         source: 'analytics.js',
+                //         source: 'cookie-consent',
                 //         category: 'analytics'
                 //     }
                 // }
@@ -126,20 +127,19 @@ export const cookieConsentConfig = {
         },
         // marketing: {
         //     title: 'Маркетинг',
-        //     description: 'Эти файлы cookie используются для отслеживания посетителей на веб-сайтах. Намерение состоит в том, чтобы показывать релевантную рекламу.',
+        //     description: 'Эти файлы cookie используются для отслеживания посетителей на веб-сайтах с целью показа релевантной рекламы.',
         //     required: false,
         //     scripts: [
         //         {
         //             type: 'file',
-        //             path: 'marketing.js'  // Относительный путь от baseUrl
+        //             path: '/js/scripts/marketing.js'
         //         },
         //         {
         //             type: 'event',
         //             name: 'loadMarketing',
         //             data: {
         //                 source: 'cookie-consent',
-        //                 category: 'marketing',
-        //                 timestamp: new Date().toISOString()
+        //                 category: 'marketing'
         //             }
         //         }
         //     ]
@@ -151,22 +151,21 @@ export const cookieConsentConfig = {
         //     scripts: [
         //         {
         //             type: 'file',
-        //             path: 'functional.js'  // Относительный путь от baseUrl
+        //             path: '/js/scripts/functional.js'
         //         },
         //         {
         //             type: 'event',
         //             name: 'loadFunctional',
         //             data: {
         //                 source: 'cookie-consent',
-        //                 category: 'functional',
-        //                 timestamp: new Date().toISOString()
+        //                 category: 'functional'
         //             }
         //         }
         //     ]
         // }
     },
 
-    // Тексты для баннеров
+    // Тексты для интерфейса
     texts: {
         mainBanner: {
             title: 'Настройки файлов cookie',
@@ -183,14 +182,14 @@ export const cookieConsentConfig = {
         },
         settings: {
             title: 'Настройки cookie',
-            description: 'Выберите, какие файлы cookie вы хотите разрешить на этом сайте.',
+            description: 'Выберите, какие файлы cookie вы хотите разрешить на этом сайте. Вы можете изменить эти настройки в любое время.',
             acceptAll: 'Принять все',
             acceptSelected: 'Сохранить выбор'
         },
         simpleNotification: {
             title: 'Используем куки и рекомендательные технологии',
-            description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="#" class="cookie-consent__link">А ещё</a>',
+            description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="#" class="cookie-consent__link">Подробнее</a>',
             acceptButton: 'OK'
         }
     }
-}; 
+};

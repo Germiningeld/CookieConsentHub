@@ -24,6 +24,10 @@
   top: 50%
   left: 50%
   transform: translate(-50%, -50%)
+  
+  // Добавляем скролл для высоких модальных окон
+  max-height: 90vh
+  overflow-y: auto
 
   // Общие стили для баннеров (top/bottom)
   &--top,
@@ -37,6 +41,8 @@
     transform: none
     padding: 0
     margin: 0
+    max-height: none
+    overflow-y: visible
 
     .cookie-consent__content
       @include flex-between
@@ -180,7 +186,9 @@
 
     &--necessary,
     &--selected,
-    &--close
+    &--close,
+    &--keep,
+    &--accept
       @include button-variant($light-hover, $light-text, $light-border)
 
     &--settings
@@ -249,7 +257,9 @@
   .cookie-consent__button
     &--necessary,
     &--selected,
-    &--close
+    &--close,
+    &--keep,
+    &--accept
       @include button-variant($dark-hover, $dark-text, lighten($dark-hover, 5%))
 
     &--settings
@@ -312,4 +322,19 @@
 // Стили для блокировки скроллинга
 body.cookie-consent-no-scroll
   overflow: hidden
-  padding-right: var(--cookie-consent-scrollbar-width, 0px) 
+  padding-right: var(--cookie-consent-scrollbar-width, 0px)
+
+// Кастомный скроллбар для модального окна
+.cookie-consent::-webkit-scrollbar
+  width: 6px
+
+.cookie-consent::-webkit-scrollbar-track
+  background: #f1f1f1
+  border-radius: 3px
+
+.cookie-consent::-webkit-scrollbar-thumb
+  background: #c1c1c1
+  border-radius: 3px
+
+.cookie-consent::-webkit-scrollbar-thumb:hover
+  background: #a8a8a8

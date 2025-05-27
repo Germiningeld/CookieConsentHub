@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-5S7NM4HM');</script>
-    <!-- End Google Tag Manager -->
-
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookie Consent Hub - Демонстрация</title>
@@ -93,10 +84,6 @@
     </style>
 </head>
 <body>
-<!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5S7NM4HM"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
 
     <div class="container">
         <header>
@@ -126,23 +113,18 @@
         <section>
             <h2>Как использовать</h2>
             <div class="code-example">
-                <pre><code>// Инициализация
-const cookieConsent = new ConsentNotification({
-    categories: {
-        analytics: {
-            title: 'Аналитика',
-            scripts: [
-                {
-                    type: 'file',
-                    path: '/js/analytics.js'
-                }
-            ]
-        }
-    }
+                <pre><code>// Инициализация (новый API)
+const cookieConsent = CookieConsent.init({
+    simpleMode: false
 });
 
 // Открытие настроек
-cookieConsent.openSettings();</code></pre>
+CookieConsent.openSettings();
+
+// Проверка согласия
+if (CookieConsent.hasConsent('analytics')) {
+    // Загружаем аналитику
+}</code></pre>
             </div>
         </section>
 
@@ -173,22 +155,64 @@ cookieConsent.openSettings();</code></pre>
         </footer>
     </div>
 
+    <!-- ИСПРАВЛЕНО: Теперь подключаем новый файл -->
+    <script type="module" src="./js/index.js"></script>
+    
     <script>
-        // Включить режим отладки для cookie consent
-        window.__COOKIE_CONSENT_DEBUG__ = true;
-    </script>
+        // Создаем логгер для HTML скрипта
+        const htmlLogger = {
+            info: (message, data) => {
+                if (window.__COOKIE_CONSENT_DEBUG__) {
+                    console.log(`[CookieConsent-HTML] ${message}`, data || '');
+                }
+            },
+            warn: (message, data) => {
+                if (window.__COOKIE_CONSENT_DEBUG__) {
+                    console.warn(`[CookieConsent-HTML] ${message}`, data || '');
+                } else {
+                    // Для предупреждений показываем всегда, но более тихо
+                    console.warn(`CookieConsent: ${message}`);
+                }
+            },
+            error: (message, data) => {
+                // Ошибки показываем всегда
+                console.error(`[CookieConsent-HTML] ${message}`, data || '');
+            }
+        };
 
-    <script type="module">
-        import { ConsentNotification } from './js/consent-notification.js';
-        import { cookieConsentConfig } from './js/cookie-consent-config.js';
-        
-        // Инициализация
-        const cookieConsent = new ConsentNotification(cookieConsentConfig);
-        
-        // Добавляем обработчик для кнопки настроек
-        document.getElementById('openSettings').addEventListener('click', () => {
-            cookieConsent.openSettings();
+        // Добавляем обработчик для кнопки настроек после загрузки
+        document.addEventListener('DOMContentLoaded', () => {
+            const settingsButton = document.getElementById('openSettings');
+            
+            settingsButton.addEventListener('click', () => {
+                htmlLogger.info('Settings button clicked');
+                
+                // Проверяем доступность CookieConsent
+                if (window.CookieConsent && window.CookieConsent.instance) {
+                    htmlLogger.info('Using CookieConsent.openSettings()');
+                    window.CookieConsent.openSettings();
+                } else if (window.cookieConsent && window.cookieConsent.openSettings) {
+                    htmlLogger.info('Using window.cookieConsent.openSettings()');
+                    window.cookieConsent.openSettings();
+                } else if (window.debugCookieConsent && window.debugCookieConsent.getInstance) {
+                    htmlLogger.info('Using debugCookieConsent instance');
+                    const instance = window.debugCookieConsent.getInstance();
+                    if (instance && instance._openSettings) {
+                        instance._openSettings();
+                    }
+                } else {
+                    htmlLogger.warn('CookieConsent not found, waiting...');
+                    // Пробуем через короткое время
+                    setTimeout(() => {
+                        if (window.CookieConsent && window.CookieConsent.instance) {
+                            window.CookieConsent.openSettings();
+                        } else {
+                            htmlLogger.error('CookieConsent still not available');
+                        }
+                    }, 500);
+                }
+            });
         });
     </script>
 </body>
-</html> 
+</html>
