@@ -49,3 +49,4 @@ jest.setup.js
 package-lock.json
 package.json
 webpack.config.js
+__mocks__
