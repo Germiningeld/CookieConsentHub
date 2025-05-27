@@ -38,9 +38,10 @@ CookieConsent.init({
 });
 ```
 
-- Автоматически принимает все согласия
-- Показывает только информационное уведомление
+- Автоматически принимает все согласия при инициализации
 - Загружает все скрипты сразу
+- Показывает только информационное уведомление (`simpleNotification`)
+- Пользователь должен нажать "OK" чтобы закрыть уведомление
 
 ## Типы модальных окон
 
@@ -126,7 +127,7 @@ visual: {
             position: 'bottom',          // Обычно в нижней части
             maxWidth: '500px',
             showOverlay: false,          // Без затемнения
-            allowClose: false,           // Нельзя закрыть
+            allowClose: false,           // Нельзя закрыть крестиком
             closeOnOverlayClick: false,
             animation: 'slide',
             preventScroll: false,
@@ -137,6 +138,48 @@ visual: {
 ```
 
 ## Настройки категорий cookie
+
+### Активные категории (по умолчанию)
+
+В текущей конфигурации активны только две категории:
+
+```javascript
+categories: {
+    necessary: {
+        title: 'Необходимые',
+        description: 'Эти файлы cookie необходимы для работы сайта и не могут быть отключены.',
+        required: true,              // Обязательная категория
+        scripts: [
+            {
+                type: 'file',
+                path: '/js/scripts/necessary.js'
+            }
+        ]
+    },
+    analytics: {
+        title: 'Аналитика',
+        description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая информацию о его использовании. Все данные анонимизированы.',
+        required: false,
+        scripts: [
+            {
+                type: 'event',
+                name: 'loadAnalytics',
+                data: {
+                    source: 'cookie-consent',
+                    category: 'analytics'
+                }
+            }
+        ]
+    }
+}
+
+// ОТКЛЮЧЕННЫЕ КАТЕГОРИИ (закомментированы в конфигурации):
+// - marketing: Маркетинговые cookie
+// - functional: Функциональные cookie
+// 
+// Чтобы активировать их, раскомментируйте соответствующие блоки
+// в файле cookie-consent-config.js
+```
 
 ### Структура категории
 
@@ -263,6 +306,18 @@ categories: {
                 data: { category: 'marketing' }
             }
         ]
+    },
+    functional: {
+        title: 'Функциональные',
+        description: 'Позволяют сайту запоминать сделанные вами выборы.',
+        required: false,
+        scripts: [
+            {
+                type: 'event',
+                name: 'loadFunctional',
+                data: { category: 'functional' }
+            }
+        ]
     }
 }
 ```
@@ -315,7 +370,7 @@ texts: {
 texts: {
     simpleNotification: {
         title: 'Используем куки и рекомендательные технологии',
-        description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="/privacy" class="cookie-consent__link">Подробнее</a>',
+        description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="#" class="cookie-consent__link">Подробнее</a>',
         acceptButton: 'OK'
     }
 }
@@ -323,13 +378,13 @@ texts: {
 
 ## Интеграция с системами аналитики
 
-### Google Tag Manager
+### Google Tag Manager (активен)
 
 ```javascript
 tagManagers: {
     gtm: {
         enabled: true,
-        id: 'GTM-XXXXXXX',           // Ваш GTM ID
+        id: 'GTM-5S7NM4HM',           // ЗАМЕНИТЕ на ваш GTM ID
         events: {
             consent: 'cookieConsent',  // Событие изменения согласия
             settings: 'cookieSettings' // Событие открытия настроек
@@ -339,17 +394,24 @@ tagManagers: {
 }
 ```
 
-### Matomo
+**⚠️ Важно**: Замените `GTM-5S7NM4HM` на ваш реальный GTM ID перед использованием в продакшене.
+
+### Matomo (не активен)
 
 ```javascript
 tagManagers: {
     matomo: {
-        enabled: true,
-        siteId: '1',                 // ID сайта в Matomo
-        trackerUrl: 'https://your-matomo.com/'
+        enabled: false,              // Отключен по умолчанию
+        siteId: null,                // Установите ID сайта для активации
+        trackerUrl: null             // Установите URL трекера для активации
     }
 }
 ```
+
+**Для активации Matomo**:
+1. Установите `enabled: true`
+2. Укажите `siteId` и `trackerUrl`
+3. Убедитесь что на странице подключен Matomo трекинг код
 
 ## Настройки внешнего вида
 
@@ -358,8 +420,8 @@ tagManagers: {
 ```javascript
 visual: {
     overlay: {
-        blur: '5px',                 // Размытие фона
-        color: 'rgba(0, 0, 0, 0.5)', // Цвет затемнения
+        blur: '0',                   // Размытие фона (по умолчанию отключено)
+        color: 'rgba(0, 0, 0, 0.3)', // Цвет затемнения
         zIndex: 9998                 // z-index оверлея
     }
 }
@@ -381,11 +443,11 @@ visual: {
 
 ## API методы
 
-### Статические методы
+### Статические методы (работают)
 
 ```javascript
 // Инициализация
-CookieConsent.init(options);
+const consent = CookieConsent.init(options);
 
 // Проверка согласия
 CookieConsent.hasConsent('analytics'); // true/false
@@ -393,10 +455,41 @@ CookieConsent.hasConsent('analytics'); // true/false
 // Получение всех согласий
 CookieConsent.getConsent(); // { necessary: true, analytics: false, ... }
 
-// Управление модальным окном
-CookieConsent.openSettings();
+// Показать/скрыть модальное окно
 CookieConsent.show();
 CookieConsent.hide();
+```
+
+### Методы экземпляра (правильные способы вызова)
+
+```javascript
+// ✅ Через глобальный объект (рекомендуется)
+window.cookieConsent.openSettings();
+
+// ✅ Через экземпляр (если есть доступ)
+if (CookieConsent.instance) {
+    CookieConsent.instance._openSettings();
+}
+
+// ✅ Через отладочные функции
+debugCookieConsent.openSettings();
+
+// ❌ НЕ РАБОТАЕТ (метод не существует)
+// CookieConsent.openSettings();
+```
+
+### Глобальный API объект
+
+```javascript
+// Доступен как window.cookieConsent
+window.cookieConsent = {
+    init: (options) => CookieConsent.init(options),
+    hasConsent: (category) => CookieConsent.hasConsent(category),
+    getConsent: () => CookieConsent.getConsent(),
+    openSettings: () => CookieConsent.openSettings(),  // Работает корректно
+    show: () => CookieConsent.show(),
+    hide: () => CookieConsent.hide()
+};
 ```
 
 ### События браузера
@@ -408,8 +501,8 @@ window.addEventListener('cookieConsent', (event) => {
 });
 
 // Кастомные события из скриптов
-window.addEventListener('cookieConsent:analyticsLoaded', (event) => {
-    console.log('Analytics loaded:', event.detail);
+window.addEventListener('cookieConsent:loadAnalytics', (event) => {
+    console.log('Analytics event triggered:', event.detail);
 });
 ```
 
@@ -418,8 +511,14 @@ window.addEventListener('cookieConsent:analyticsLoaded', (event) => {
 ### Включение отладки
 
 ```javascript
-// Включить режим отладки
+// Способ 1: Прямо в коде
 window.__COOKIE_CONSENT_DEBUG__ = true;
+
+// Способ 2: Через функцию отладки
+debugCookieConsent.enableDebug();
+
+// Отключение отладки
+debugCookieConsent.disableDebug();
 ```
 
 ### Функции отладки
@@ -441,6 +540,24 @@ debugCookieConsent.testHide();
 // Ручное управление оверлеем
 debugCookieConsent.showOverlay();
 debugCookieConsent.hideOverlay();
+
+// Управление режимом отладки
+debugCookieConsent.enableDebug();
+debugCookieConsent.disableDebug();
+```
+
+### Логирование
+
+При включенной отладке в консоли будут отображаться подробные логи:
+
+```javascript
+// Примеры логов
+[CookieConsent] Initializing CookieConsent
+[CookieConsent] Retrieved saved consent: {...}
+[CookieConsent] Valid consent found, loading scripts
+[CookieConsent] Opening settings
+[CookieConsent] Accept all clicked - hiding modal
+[CookieConsent] GTM event sent: cookieConsent {...}
 ```
 
 ## CSS переменные для кастомизации
@@ -448,8 +565,8 @@ debugCookieConsent.hideOverlay();
 ```css
 :root {
   /* Оверлей */
-  --cookie-consent-overlay-color: rgba(0, 0, 0, 0.5);
-  --cookie-consent-blur: 5px;
+  --cookie-consent-overlay-color: rgba(0, 0, 0, 0.3);
+  --cookie-consent-blur: 0;
   --cookie-consent-overlay-z-index: 9998;
 
   /* Модальное окно */
@@ -467,6 +584,24 @@ debugCookieConsent.hideOverlay();
   background: #333333;
   color: #ffffff;
 }
+
+/* Позиционирование */
+.cookie-consent--top {
+  top: 20px;
+}
+
+.cookie-consent--bottom {
+  bottom: 20px;
+}
+
+/* Анимации */
+.cookie-consent--fade {
+  transition: opacity 0.3s ease;
+}
+
+.cookie-consent--slide {
+  transition: transform 0.3s ease;
+}
 ```
 
 ## Хранение данных
@@ -474,31 +609,105 @@ debugCookieConsent.hideOverlay();
 ### Формат данных в localStorage
 
 ```javascript
+// Ключ: 'cookieConsent'
 {
     "is_cookies_accepted": 1,
-    "timestamp": 1640995200000,
+    "timestamp": 1703686800000,
     "necessary": true,
-    "analytics": false,
-    "marketing": false,
-    "functional": true
+    "analytics": false
+    // marketing и functional будут добавлены если категории активированы
 }
+
+// Ключ: 'cookieConsentCsrf' 
+"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" // CSRF токен
 ```
 
 ### Срок действия
 
-- Согласие действует **24 часа**
+- Согласие действует **24 часа** с момента сохранения
 - После истечения срока пользователю снова показывается баннер
-- Данные автоматически удаляются при истечении срока
+- Проверка срока происходит при каждой инициализации
 
 ### Очистка cookie
 
 Система автоматически удаляет неавторизованные cookie при изменении согласия:
 
 ```javascript
-// Список cookie, требующих согласия
+// Список cookie, требующих согласия (из реализации)
 const consentRequiredCookies = {
-    analytics: ['_ga', '_gid', '_gat', '_ym_uid', '_ym_d'],
+    analytics: ['_ym_uid', '_ym_d', '_ga', '_gid', '_gat'],
     marketing: ['_fbp', '_fbc'],
     functional: ['PHPSESSID'] // если используется для функций, требующих согласия
 };
+```
+
+## Безопасность
+
+### Встроенные механизмы
+
+1. **XSS защита**: Все пользовательские данные экранируются через `_escapeHtml()`
+2. **HTML санитизация**: В `_sanitizeHtml()` разрешены только безопасные теги
+3. **CSP заголовки**: Автоматически добавляются через `_addSecurityHeaders()`
+4. **CSRF токены**: Генерируются и сохраняются для защиты от подделок
+
+### Разрешенные HTML теги
+
+```javascript
+// В описаниях можно использовать только эти теги:
+const allowedTags = ['a', 'strong', 'em', 'br', 'p'];
+const allowedAttributes = {
+    'a': ['href', 'class', 'target', 'rel']
+};
+```
+
+### Content Security Policy
+
+Автоматически добавляемые CSP правила включают разрешения для:
+- Google Tag Manager
+- Google Analytics  
+- Matomo (если активен)
+
+## Миграция и обновления
+
+### Подготовка к использованию
+
+1. **Обновите GTM ID**:
+```javascript
+// В cookie-consent-config.js
+gtm: {
+    enabled: true,
+    id: 'GTM-ВАШТАМ',  // Замените на реальный
+}
+```
+
+2. **Активируйте нужные категории**:
+```javascript
+// Раскомментируйте в cookie-consent-config.js
+// marketing: { ... },
+// functional: { ... }
+```
+
+3. **Настройте пути к скриптам**:
+```javascript
+scripts: [
+    {
+        type: 'file',
+        path: '/js/your-actual-script.js'  // Реальные пути
+    }
+]
+```
+
+4. **Создайте CSS файл** из SASS исходников или напишите собственные стили
+
+### Проверка работоспособности
+
+```javascript
+// После инициализации проверьте:
+console.log('Instance:', CookieConsent.instance);
+console.log('Config:', CookieConsent.instance?.config);
+console.log('Consent:', CookieConsent.getConsent());
+
+// Проверьте элементы DOM:
+debugCookieConsent.checkModal();
+debugCookieConsent.checkOverlay();
 ```
