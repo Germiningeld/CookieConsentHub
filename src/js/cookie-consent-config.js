@@ -116,7 +116,7 @@ export const cookieConsentConfig = {
                     path: '/js/scripts/analytics.js'
                 },
                 // {
-                //     type: 'event',
+                //     type: 'gtm',
                 //     name: 'loadAnalytics',
                 //     data: {
                 //         source: 'cookie-consent',
@@ -133,14 +133,6 @@ export const cookieConsentConfig = {
         //         {
         //             type: 'file',
         //             path: '/js/scripts/marketing.js'
-        //         },
-        //         {
-        //             type: 'event',
-        //             name: 'loadMarketing',
-        //             data: {
-        //                 source: 'cookie-consent',
-        //                 category: 'marketing'
-        //             }
         //         }
         //     ]
         // },
@@ -152,14 +144,6 @@ export const cookieConsentConfig = {
         //         {
         //             type: 'file',
         //             path: '/js/scripts/functional.js'
-        //         },
-        //         {
-        //             type: 'event',
-        //             name: 'loadFunctional',
-        //             data: {
-        //                 source: 'cookie-consent',
-        //                 category: 'functional'
-        //             }
         //         }
         //     ]
         // }
