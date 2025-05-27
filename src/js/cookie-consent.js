@@ -29,7 +29,7 @@ export class CookieConsent {
         // Инициализируем состояние
         this._initializeState();
         this._initializeConfig(config);
-        
+
         // Устанавливаем singleton
         CookieConsent.instance = this;
         window.cookieConsentInstance = this;
@@ -53,7 +53,8 @@ export class CookieConsent {
         this._scrollPosition = null;
         this._cookiesCleared = false;
         this._pendingReload = false;
-        this._overlayClickHandler = null; // Добавляем ссылку на обработчик оверлея
+        this._overlayClickHandler = null;
+        this._closedViaCloseButton = false; // Флаг для отслеживания способа закрытия
     }
 
     /**
@@ -62,7 +63,7 @@ export class CookieConsent {
     _initializeConfig(config) {
         try {
             this.isSimpleMode = config.simpleMode || false;
-            
+
             this.config = {
                 modalTypes: cookieConsentConfig.modalTypes,
                 visual: { ...cookieConsentConfig.visual, ...config.visual },
@@ -84,7 +85,7 @@ export class CookieConsent {
     _validateConfig() {
         const requiredFields = ['modalTypes', 'visual', 'categories', 'texts', 'tagManagers'];
         const missingFields = requiredFields.filter(field => !this.config[field]);
-        
+
         if (missingFields.length > 0) {
             throw new Error(`Missing required config fields: ${missingFields.join(', ')}`);
         }
@@ -95,10 +96,19 @@ export class CookieConsent {
 
         const requiredTexts = ['mainBanner', 'experienceImprove', 'settings', 'simpleNotification'];
         const missingTexts = requiredTexts.filter(text => !this.config.texts[text]);
-        
+
         if (missingTexts.length > 0) {
             throw new Error(`Missing required text fields: ${missingTexts.join(', ')}`);
         }
+
+        // Дополнительная проверка для simpleNotification
+        if (!this.config.texts.simpleNotification.title ||
+            !this.config.texts.simpleNotification.description ||
+            !this.config.texts.simpleNotification.acceptButton) {
+            throw new Error('simpleNotification must have title, description and acceptButton');
+        }
+
+        this._logger.info('Config validation passed');
     }
 
     /**
@@ -106,34 +116,51 @@ export class CookieConsent {
      */
     _initialize() {
         try {
+            if (this.isSimpleMode) {
+                // В простом режиме: новая логика
+                const savedConsent = this._getStoredConsent();
+                this._logger.info('Simple mode - Retrieved saved consent:', savedConsent);
+
+                // Проверяем, нужно ли показывать баннер
+                if (this._shouldShowSimpleBanner(savedConsent)) {
+                    this._logger.info('Simple mode - Showing banner and creating initial consent');
+
+                    // Создаем полный объект согласия со всеми категориями, но БЕЗ is_cookies_accepted
+                    const initialConsent = this._createSimpleInitialConsent();
+                    this._saveConsent(initialConsent);
+                    this._logger.info('Simple mode - Initial consent saved:', initialConsent);
+
+                    // Загружаем все скрипты
+                    this._clearUnauthorizedCookies(initialConsent);
+                    this._loadScripts(initialConsent);
+
+                    // Показываем баннер
+                    this._createElements();
+                    this._showSimpleNotification();
+                } else {
+                    this._logger.info('Simple mode - Banner hidden (user already accepted)');
+                    // Загружаем скрипты на основе сохраненного согласия
+                    this._clearUnauthorizedCookies(savedConsent);
+                    this._loadScripts(savedConsent);
+                }
+                return;
+            }
+
+            // Обычный режим - оригинальная логика
             const savedConsent = this._getStoredConsent();
             this._logger.info('Retrieved saved consent:', savedConsent);
-            
+
             if (this._isValidConsent(savedConsent)) {
                 this._logger.info('Valid consent found, loading scripts');
                 this._clearUnauthorizedCookies(savedConsent);
                 this._loadScripts(savedConsent);
-                
-                // В простом режиме все равно показываем уведомление
-                if (this.isSimpleMode) {
-                    this._showSimpleNotification();
-                }
                 return;
             }
 
             this._logger.info('No valid consent found, showing banner');
             this._createElements();
-            
-            if (this.isSimpleMode) {
-                // В простом режиме сразу применяем все согласия и показываем уведомление
-                const allConsent = this._createConsentObject(true);
-                this._saveConsent(allConsent);
-                this._clearUnauthorizedCookies(allConsent);
-                this._loadScripts(allConsent);
-                this._showSimpleNotification();
-            } else {
-                this._showInitialModal();
-            }
+            this._showInitialModal();
+
         } catch (error) {
             this._logger.error('Failed to initialize:', error);
             throw error;
@@ -141,15 +168,99 @@ export class CookieConsent {
     }
 
     /**
+     * Создает начальный объект согласия для простого режима (без is_cookies_accepted)
+     */
+    _createSimpleInitialConsent() {
+        const consent = {
+            // НЕ добавляем is_cookies_accepted и timestamp - они добавятся при нажатии OK
+        };
+
+        // Добавляем все категории как принятые
+        Object.entries(this.config.categories).forEach(([key, category]) => {
+            consent[key] = true;
+        });
+
+        return consent;
+    }
+
+    /**
+     * Обработчик нажатия кнопки "OK" в простом режиме
+     */
+    _handleSimpleAccept() {
+        this._logger.info('Simple accept clicked - updating consent with acceptance');
+
+        // Получаем текущее согласие
+        const currentConsent = this._getStoredConsent() || {};
+        this._logger.info('Current consent before update:', currentConsent);
+
+        // Добавляем is_cookies_accepted и timestamp к существующему согласию
+        const updatedConsent = {
+            ...currentConsent,
+            is_cookies_accepted: 1,
+            timestamp: Date.now()
+        };
+
+        this._logger.info('Updated consent to save:', updatedConsent);
+
+        // Сохраняем обновленное согласие
+        this._saveConsent(updatedConsent);
+
+        // Проверяем что сохранилось
+        const savedConsent = this._getStoredConsent();
+        this._logger.info('Consent after saving:', savedConsent);
+
+        // Скрываем баннер
+        this._hide();
+
+        this._logger.info('Simple mode - consent update completed');
+    }
+
+
+    /**
+     * Проверяет, нужно ли показывать баннер в простом режиме
+     */
+    _shouldShowSimpleBanner(consent) {
+        // Показываем баннер если:
+        // 1. Нет сохраненного согласия вообще
+        // 2. Есть согласие, но is_cookies_accepted не равен 1
+        if (!consent) {
+            this._logger.info('No consent found - showing banner');
+            return true;
+        }
+
+        if (consent.is_cookies_accepted !== 1) {
+            this._logger.info('Consent not accepted (is_cookies_accepted !== 1) - showing banner');
+            return true;
+        }
+
+        // Проверяем срок действия согласия
+        const expirationTime = this.config.core?.consentExpiration || (24 * 60 * 60 * 1000);
+        if (consent.timestamp && Date.now() - consent.timestamp > expirationTime) {
+            this._logger.info('Consent expired - showing banner');
+            return true;
+        }
+
+        this._logger.info('Valid consent found - hiding banner');
+        return false;
+    }
+
+    /**
      * Проверяет валидность сохраненного согласия
      */
     _isValidConsent(consent) {
+        // В простом режиме используем отдельную логику
+        if (this.isSimpleMode) {
+            return !this._shouldShowSimpleBanner(consent);
+        }
+
+        // Оригинальная логика для обычного режима
         if (!consent || consent.is_cookies_accepted !== 1) {
             return false;
         }
 
-        // Проверяем срок действия (24 часа)
-        if (consent.timestamp && Date.now() - consent.timestamp > 24 * 60 * 60 * 1000) {
+        // Используем срок действия из конфигурации
+        const expirationTime = this.config.core?.consentExpiration || (24 * 60 * 60 * 1000);
+        if (consent.timestamp && Date.now() - consent.timestamp > expirationTime) {
             this._logger.info('Consent expired');
             return false;
         }
@@ -180,12 +291,12 @@ export class CookieConsent {
         this.overlay.style.setProperty('--cookie-consent-blur', this.config.visual.overlay.blur);
         this.overlay.style.setProperty('--cookie-consent-overlay-color', this.config.visual.overlay.color);
         this.overlay.style.setProperty('--cookie-consent-overlay-z-index', this.config.visual.overlay.zIndex);
-        
+
         // Устанавливаем начальные стили
         this.overlay.style.display = 'none';
         this.overlay.style.opacity = '0';
         this.overlay.style.visibility = 'hidden';
-        
+
         document.body.appendChild(this.overlay);
         this._logger.info('Overlay created and added to DOM');
     }
@@ -200,11 +311,11 @@ export class CookieConsent {
         this.notification.style.setProperty('--cookie-consent-max-width', this.config.visual.modal.maxWidth);
         this.notification.style.setProperty('--cookie-consent-border-radius', this.config.visual.modal.borderRadius);
         this.notification.style.setProperty('--cookie-consent-box-shadow', this.config.visual.modal.boxShadow);
-        
+
         // Добавляем возможность скролла для высоких модальных окон
         this.notification.style.maxHeight = '90vh';
         this.notification.style.overflowY = 'auto';
-        
+
         document.body.appendChild(this.notification);
     }
 
@@ -373,15 +484,32 @@ export class CookieConsent {
      */
     _renderSimpleNotificationContent() {
         const texts = this.config.texts.simpleNotification;
-        return `
+
+        this._logger.info('=== renderSimpleNotificationContent START ===');
+        this._logger.info('texts.simpleNotification:', texts);
+        this._logger.info('texts.title:', texts.title);
+        this._logger.info('texts.description:', texts.description);
+        this._logger.info('texts.acceptButton:', texts.acceptButton);
+
+        const wrappedDescription = this._wrapTextInParagraphs(texts.description);
+        this._logger.info('wrappedDescription result:', wrappedDescription);
+
+        const content = `
+        <div class="cookie-consent__header">
             <h2 class="cookie-consent__title">${this._escapeHtml(texts.title)}</h2>
             <div class="cookie-consent__description">
-                ${this._sanitizeHtml(texts.description)}
+                ${wrappedDescription}
             </div>
-            <div class="cookie-consent__buttons">
-                <button class="cookie-consent__button cookie-consent__button--accept">${this._escapeHtml(texts.acceptButton)}</button>
-            </div>
-        `;
+        </div>
+        <div class="cookie-consent__buttons">
+            <button class="cookie-consent__button cookie-consent__button--accept">${this._escapeHtml(texts.acceptButton)}</button>
+        </div>
+    `;
+
+        this._logger.info('Final content:', content);
+        this._logger.info('=== renderSimpleNotificationContent END ===');
+
+        return content;
     }
 
     /**
@@ -440,7 +568,15 @@ export class CookieConsent {
                 e.preventDefault();
                 this._openSettings();
             },
-            '.cookie-consent__close-button': () => this._handleClose()
+            '.cookie-consent__close-button': () => {
+                // Устанавливаем флаг закрытия через кнопку
+                this._closedViaCloseButton = true;
+                this._handleClose();
+                // Сбрасываем флаг после обработки
+                setTimeout(() => {
+                    this._closedViaCloseButton = false;
+                }, 100);
+            }
         };
 
         Object.entries(handlers).forEach(([selector, handler]) => {
@@ -454,16 +590,22 @@ export class CookieConsent {
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
         if (modalSettings?.closeOnOverlayClick) {
             // Удаляем старый обработчик если есть
-            this.overlay.removeEventListener('click', this._overlayClickHandler);
-            
+            if (this._overlayClickHandler) {
+                this.overlay.removeEventListener('click', this._overlayClickHandler);
+            }
+
             // Создаем новый обработчик
             this._overlayClickHandler = (e) => {
                 // Проверяем, что клик был именно по оверлею, а не по модальному окну
                 if (e.target === this.overlay) {
+                    this._closedViaCloseButton = true;
                     this._handleClose();
+                    setTimeout(() => {
+                        this._closedViaCloseButton = false;
+                    }, 100);
                 }
             };
-            
+
             this.overlay.addEventListener('click', this._overlayClickHandler);
         }
     }
@@ -501,19 +643,23 @@ export class CookieConsent {
         if (!modalSettings) return;
 
         this.notification.classList.add('cookie-consent--visible');
-        
-        if (modalSettings.showOverlay) {
+
+        if (modalSettings.showOverlay && this.overlay) {
+            // Сначала устанавливаем display: block
             this.overlay.style.display = 'block';
             this.overlay.style.opacity = '0';
             this.overlay.style.visibility = 'hidden';
-            
-            // Принудительно показываем оверлей
+
+            // Принудительно показываем оверлей в следующем кадре
             requestAnimationFrame(() => {
-                this.overlay.style.opacity = '1';
-                this.overlay.style.visibility = 'visible';
+                if (this.overlay) {
+                    this.overlay.style.opacity = '1';
+                    this.overlay.style.visibility = 'visible';
+                    this.overlay.classList.add('cookie-consent-overlay--visible');
+                }
             });
         }
-        
+
         this.isVisible = true;
 
         if (modalSettings.preventScroll) {
@@ -530,22 +676,19 @@ export class CookieConsent {
      */
     _hide() {
         this._logger.info('Hiding modal');
-        
+
         this.notification.classList.remove('cookie-consent--visible');
-        
-        // Принудительно и немедленно скрываем оверлей
+
+        // Немедленно и принудительно скрываем оверлей
         if (this.overlay) {
             this.overlay.style.opacity = '0';
             this.overlay.style.visibility = 'hidden';
-            
-            // Даем время на анимацию, затем полностью скрываем
-            setTimeout(() => {
-                if (this.overlay) {
-                    this.overlay.style.display = 'none';
-                }
-            }, 300);
+            this.overlay.style.display = 'none';
+
+            // Убираем любые классы анимации
+            this.overlay.classList.remove('cookie-consent-overlay--visible');
         }
-        
+
         this.isVisible = false;
 
         // Восстанавливаем скролл
@@ -577,9 +720,12 @@ export class CookieConsent {
         this._saveConsent(consent);
         this._clearUnauthorizedCookies(consent);
         this._loadScripts(consent);
-        
+
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
-        if (modalSettings?.showExperienceImprove) {
+
+        // Показываем баннер улучшения опыта только если это предусмотрено настройками
+        // и если пользователь не закрыл окно принудительно через кнопку закрытия
+        if (modalSettings?.showExperienceImprove && !this._closedViaCloseButton) {
             this._showExperienceImprove();
         } else {
             this._hide();
@@ -592,21 +738,19 @@ export class CookieConsent {
         this._saveConsent(consent);
         this._clearUnauthorizedCookies(consent);
         this._loadScripts(consent);
-        
+
         const allSelected = this._areAllOptionalCategoriesSelected(consent);
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
-        
-        if (modalSettings?.showExperienceImprove && !allSelected) {
+
+        // Показываем баннер только если пользователь не выбрал все опции 
+        // И окно не было закрыто принудительно через кнопку закрытия
+        if (modalSettings?.showExperienceImprove && !allSelected && !this._closedViaCloseButton) {
             this._showExperienceImprove();
         } else {
             this._hide();
         }
     }
 
-    _handleSimpleAccept() {
-        this._logger.info('Simple accept clicked');
-        this._hide();
-    }
 
     _handleKeepChoice() {
         this._logger.info('Keep choice clicked');
@@ -615,7 +759,7 @@ export class CookieConsent {
 
     _handleClose() {
         this._logger.info('Close clicked');
-        
+
         // Если нет сохраненного согласия, сохраняем минимальные настройки
         if (!this._getStoredConsent()) {
             const minimalConsent = this._createConsentObject(false);
@@ -623,7 +767,8 @@ export class CookieConsent {
             this._clearUnauthorizedCookies(minimalConsent);
             this._loadScripts(minimalConsent);
         }
-        
+
+        // Полностью скрываем модальное окно И оверлей
         this._hide();
     }
 
@@ -632,15 +777,15 @@ export class CookieConsent {
      */
     _openSettings() {
         this._logger.info('Opening settings');
-        
+
         // Убеждаемся, что элементы созданы
         if (!this.notification || !this.overlay) {
             this._createElements();
         }
-        
+
         this.currentModalType = this.config.modalTypes.MANUAL_SETTINGS;
         this._renderModal();
-        this._show(); // Добавляем вызов показа модального окна
+        this._show();
     }
 
     /**
@@ -648,10 +793,10 @@ export class CookieConsent {
      */
     _showExperienceImprove() {
         this._logger.info('Showing experience improve banner');
-        
+
         // Сначала скрываем текущее модальное окно
         this._hide();
-        
+
         // Даем время на анимацию закрытия
         setTimeout(() => {
             this.currentModalType = this.config.modalTypes.EXPERIENCE_IMPROVE;
@@ -707,14 +852,14 @@ export class CookieConsent {
      */
     _saveConsent(consent) {
         this._logger.info('Saving consent:', consent);
-        
+
         try {
             localStorage.setItem('cookieConsent', JSON.stringify(consent));
-            
+
             // Отправляем событие
             this._sendGtmEvent(this.config.tagManagers.gtm.events.consent, { consent });
             window.dispatchEvent(new CustomEvent('cookieConsent', { detail: consent }));
-            
+
         } catch (error) {
             this._logger.error('Failed to save consent:', error);
         }
@@ -738,7 +883,7 @@ export class CookieConsent {
      */
     _loadScripts(consent) {
         this._logger.info('Loading scripts based on consent:', consent);
-        
+
         Object.entries(consent).forEach(([category, isAllowed]) => {
             if (isAllowed && this.config.categories[category]?.scripts) {
                 this._loadCategoryScripts(category);
@@ -751,7 +896,7 @@ export class CookieConsent {
      */
     _loadCategoryScripts(category) {
         const scripts = this.config.categories[category]?.scripts || [];
-        
+
         scripts.forEach(script => {
             if (!this._validateScript(script)) {
                 this._logger.warn(`Invalid script for category ${category}:`, script);
@@ -780,14 +925,14 @@ export class CookieConsent {
      */
     _loadFileScript(path) {
         const fullPath = path.startsWith('http') ? path : (path.startsWith('/') ? path : '/' + path);
-        
+
         const script = document.createElement('script');
         script.src = fullPath;
         script.async = true;
         script.onerror = (error) => {
             this._logger.error(`Failed to load script ${fullPath}:`, error);
         };
-        
+
         document.head.appendChild(script);
     }
 
@@ -805,7 +950,7 @@ export class CookieConsent {
      */
     _triggerScriptEvent(script) {
         const { name, data = {} } = script;
-        
+
         // GTM
         if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
             dataLayer.push({
@@ -830,19 +975,19 @@ export class CookieConsent {
     _validateScript(script) {
         if (!script || typeof script !== 'object') return false;
         if (!['file', 'inline', 'event', 'gtm'].includes(script.type)) return false;
-        
+
         if (script.type === 'file' && (!script.path || typeof script.path !== 'string')) {
             return false;
         }
-        
+
         if (script.type === 'inline' && (!script.code || typeof script.code !== 'string')) {
             return false;
         }
-        
+
         if ((script.type === 'event' || script.type === 'gtm') && !script.name) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -857,7 +1002,7 @@ export class CookieConsent {
         };
 
         const cookies = document.cookie.split(';');
-        
+
         cookies.forEach(cookie => {
             const [name] = cookie.trim().split('=');
             let shouldDelete = false;
@@ -964,29 +1109,38 @@ export class CookieConsent {
      * Безопасно обрабатывает HTML в описании
      */
     _sanitizeHtml(html) {
-        if (!html || typeof html !== 'string') return '';
-        
+        if (!html || typeof html !== 'string') {
+            this._logger.warn('_sanitizeHtml: empty or invalid html:', html);
+            return '';
+        }
+
+        this._logger.info('_sanitizeHtml input:', html);
+
         try {
             const temp = document.createElement('div');
             temp.innerHTML = html;
 
-            const allowedTags = ['a', 'strong', 'em', 'br', 'p'];
+            const allowedTags = ['a', 'strong', 'em', 'br', 'p', 'span'];
             const allowedAttributes = {
-                'a': ['href', 'class', 'target', 'rel']
+                'a': ['href', 'class', 'target', 'rel'],
+                'span': ['class']
             };
 
             const sanitizeAttributes = (element) => {
                 if (!element || !element.attributes) return;
-                
+
                 const attributes = Array.from(element.attributes);
                 attributes.forEach(attr => {
                     const tagName = element.tagName.toLowerCase();
-                    if (!allowedAttributes[tagName]?.includes(attr.name)) {
+                    const allowedForTag = allowedAttributes[tagName] || [];
+
+                    if (!allowedForTag.includes(attr.name)) {
+                        this._logger.info(`Removing attribute ${attr.name} from ${tagName}`);
                         element.removeAttribute(attr.name);
-                    }
-                    if (attr.name === 'href') {
+                    } else if (attr.name === 'href') {
                         const href = attr.value.toLowerCase();
-                        if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/')) {
+                        if (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/') && !href.startsWith('#')) {
+                            this._logger.info(`Removing invalid href: ${attr.value}`);
                             element.removeAttribute('href');
                         }
                     }
@@ -995,15 +1149,17 @@ export class CookieConsent {
 
             const sanitizeNode = (node) => {
                 if (!node) return;
-                
+
                 if (node.nodeType === Node.TEXT_NODE) {
-                    return;
+                    return; // Текстовые узлы оставляем как есть
                 }
 
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const tagName = node.tagName.toLowerCase();
-                    
+
                     if (!allowedTags.includes(tagName)) {
+                        this._logger.info(`Removing disallowed tag: ${tagName}`);
+                        // Заменяем тег на его содержимое
                         const fragment = document.createDocumentFragment();
                         while (node.firstChild) {
                             fragment.appendChild(node.firstChild);
@@ -1017,42 +1173,74 @@ export class CookieConsent {
                     sanitizeAttributes(node);
                 }
 
+                // Рекурсивно обрабатываем дочерние элементы
                 const childNodes = Array.from(node.childNodes || []);
                 childNodes.forEach(sanitizeNode);
             };
 
-            sanitizeNode(temp);
-            return temp.innerHTML;
+            // Обрабатываем все дочерние элементы
+            const childNodes = Array.from(temp.childNodes);
+            childNodes.forEach(sanitizeNode);
+
+            const result = temp.innerHTML;
+
+            this._logger.info('_sanitizeHtml result:', result);
+            return result;
         } catch (error) {
             this._logger.error('Error sanitizing HTML:', error);
-            return this._escapeHtml(html);
+            const fallback = this._escapeHtml(html);
+            this._logger.info('_sanitizeHtml fallback result:', fallback);
+            return fallback;
         }
     }
 
     /**
-     * Оборачивает текст в параграфы
+     * Оборачивает текст в параграфы с поддержкой HTML
      */
     _wrapTextInParagraphs(text) {
-        if (!text || typeof text !== 'string') return '';
-        
+        if (!text || typeof text !== 'string') {
+            this._logger.warn('_wrapTextInParagraphs: empty or invalid text:', text);
+            return '';
+        }
+
+        this._logger.info('_wrapTextInParagraphs input:', text);
+
         try {
-            const paragraphs = text.split('\n').filter(p => p.trim());
-            
-            if (paragraphs.length === 0) return '';
-            
-            return paragraphs
-                .map(p => {
-                    if (/<[^>]*>/.test(p)) {
-                        return `<p>${this._sanitizeHtml(p)}</p>`;
-                    }
-                    return `<p>${this._escapeHtml(p)}</p>`;
-                })
-                .join('');
+            // Разделяем текст по переносам строк
+            const lines = text.split('\n').filter(line => line.trim());
+
+            if (lines.length === 0) return '';
+
+            this._logger.info('Split lines:', lines);
+
+            // Обрабатываем каждую строку отдельно
+            const paragraphs = lines.map(line => {
+                const trimmedLine = line.trim();
+
+                if (/<[^>]*>/.test(trimmedLine)) {
+                    // Строка содержит HTML - санитизируем
+                    const sanitized = this._sanitizeHtml(trimmedLine);
+                    this._logger.info(`Line with HTML: "${trimmedLine}" -> "${sanitized}"`);
+                    return `<p>${sanitized}</p>`;
+                } else {
+                    // Обычный текст - экранируем
+                    const escaped = this._escapeHtml(trimmedLine);
+                    this._logger.info(`Plain text line: "${trimmedLine}" -> "${escaped}"`);
+                    return `<p>${escaped}</p>`;
+                }
+            }).filter(p => p !== '<p></p>'); // Убираем пустые параграфы
+
+            const result = paragraphs.join('');
+            this._logger.info('Final paragraphs result:', result);
+
+            return result;
         } catch (error) {
-            this._logger.error('Error wrapping text in paragraphs:', error);
+            this._logger.error('Error in _wrapTextInParagraphs:', error);
+            // Fallback - весь текст в одном параграфе
             return `<p>${this._escapeHtml(text)}</p>`;
         }
     }
+
 
     // Публичные статические методы API
     static init(options = {}) {

@@ -4,6 +4,14 @@
  */
 
 export const cookieConsentConfig = {
+    // Основные настройки
+    core: {
+        simpleMode: true,                     // Простой режим (true/false)
+        debugMode: true,                      // Режим отладки
+        autoInit: true,                        // Автоматическая инициализация при загрузке DOM
+        consentExpiration: 30 * 24 * 60 * 60 * 1000 // Срок действия согласия в миллисекундах (30 дней)
+    },
+
     // Типы модальных окон
     modalTypes: {
         INITIAL: 'initial',                    // Первоначальное окно
@@ -171,8 +179,8 @@ export const cookieConsentConfig = {
             acceptSelected: 'Сохранить выбор'
         },
         simpleNotification: {
-            title: 'Используем куки и рекомендательные технологии',
-            description: 'Это чтобы сайт работал лучше.\nОставаясь с нами, вы соглашаетесь на использование файлов куки. <a href="#" class="cookie-consent__link">Подробнее</a>',
+            title: 'На сайте используются файлы куки',
+            description: 'Мы используем куки, чтобы понимать, как вы пользуетесь нашим магазином, и улучшать ваш опыт покупок.\nОставаясь с нами, вы соглашаетесь на это. <a href="#" class="cookie-consent__link">Подробнее</a>',
             acceptButton: 'OK'
         }
     }

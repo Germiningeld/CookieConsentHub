@@ -184,32 +184,40 @@ if (CookieConsent.hasConsent('analytics')) {
         document.addEventListener('DOMContentLoaded', () => {
             const settingsButton = document.getElementById('openSettings');
             
-            settingsButton.addEventListener('click', () => {
-                htmlLogger.info('Settings button clicked');
+            // settingsButton.addEventListener('click', () => {
+            //     htmlLogger.info('Settings button clicked');
                 
-                // Проверяем доступность CookieConsent
-                if (window.CookieConsent && window.CookieConsent.instance) {
-                    htmlLogger.info('Using CookieConsent.openSettings()');
+            //     // Проверяем доступность CookieConsent
+            //     if (window.CookieConsent && window.CookieConsent.instance) {
+            //         htmlLogger.info('Using CookieConsent.openSettings()');
+            //         window.CookieConsent.openSettings();
+            //     } else if (window.cookieConsent && window.cookieConsent.openSettings) {
+            //         htmlLogger.info('Using window.cookieConsent.openSettings()');
+            //         window.cookieConsent.openSettings();
+            //     } else if (window.debugCookieConsent && window.debugCookieConsent.getInstance) {
+            //         htmlLogger.info('Using debugCookieConsent instance');
+            //         const instance = window.debugCookieConsent.getInstance();
+            //         if (instance && instance._openSettings) {
+            //             instance._openSettings();
+            //         }
+            //     } else {
+            //         htmlLogger.warn('CookieConsent not found, waiting...');
+            //         // Пробуем через короткое время
+            //         setTimeout(() => {
+            //             if (window.CookieConsent && window.CookieConsent.instance) {
+            //                 window.CookieConsent.openSettings();
+            //             } else {
+            //                 htmlLogger.error('CookieConsent still not available');
+            //             }
+            //         }, 500);
+            //     }
+            // });
+
+            settingsButton.addEventListener('click', () => {
+                if (window.CookieConsent?.openSettings) {
                     window.CookieConsent.openSettings();
-                } else if (window.cookieConsent && window.cookieConsent.openSettings) {
-                    htmlLogger.info('Using window.cookieConsent.openSettings()');
-                    window.cookieConsent.openSettings();
-                } else if (window.debugCookieConsent && window.debugCookieConsent.getInstance) {
-                    htmlLogger.info('Using debugCookieConsent instance');
-                    const instance = window.debugCookieConsent.getInstance();
-                    if (instance && instance._openSettings) {
-                        instance._openSettings();
-                    }
                 } else {
-                    htmlLogger.warn('CookieConsent not found, waiting...');
-                    // Пробуем через короткое время
-                    setTimeout(() => {
-                        if (window.CookieConsent && window.CookieConsent.instance) {
-                            window.CookieConsent.openSettings();
-                        } else {
-                            htmlLogger.error('CookieConsent still not available');
-                        }
-                    }, 500);
+                    console.warn('CookieConsent not available');
                 }
             });
         });
