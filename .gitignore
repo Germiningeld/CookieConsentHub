@@ -44,6 +44,7 @@ Thumbs.db
 
 *__tests__/
 __snapshots__/
+.eslintrc.js
 jest.config.js
 jest.setup.js
 package-lock.json
