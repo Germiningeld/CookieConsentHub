@@ -11,6 +11,46 @@ export const cookieConsentConfig = {
         autoInit: true,                        // Автоматическая инициализация при загрузке DOM
         consentExpiration: 30 * 24 * 60 * 60 * 1000 // Срок действия согласия в миллисекундах (30 дней)
     },
+    styles: {
+        autoLoadCSS: true,                    // Включить/выключить автозагрузку CSS
+        cssFiles: [                           // Список файлов для загрузки
+            '/css/main.min.css',        // Основные стили
+        ]
+    },
+
+    // Настройки Content Security Policy
+    security: {
+        enableCSP: true,                            // Включить автоматическое добавление CSP заголовков
+        csp: {
+            'default-src': ["'self'"],
+            'script-src': [
+                "'self'",
+                "'unsafe-inline'",
+                "'unsafe-eval'",
+                "https://mc.yandex.ru",             // Яндекс.Метрика
+                "https://yandex.ru",
+                "https://yastatic.net",
+                "https://widget.yourgood.app",
+                "https://cdn.callibri.ru"                // Дополнительные скрипты Яндекс
+            ],
+            'connect-src': [
+                "'self'",
+                "https://mc.yandex.ru",              // AJAX запросы Яндекс.Метрики
+                "https://yastatic.net",
+                "https://widget.yourgood.app",
+                "https://cdn.callibri.ru" 
+            ],
+            'img-src': [
+                "'self'",
+                "data:",
+                "https:"
+            ],
+            'style-src': [
+                "'self'",
+                "'unsafe-inline'"
+            ]
+        }
+    },
 
     // Типы модальных окон
     modalTypes: {
@@ -28,7 +68,7 @@ export const cookieConsentConfig = {
             color: 'rgba(0, 0, 0, 0.3)',       // Цвет оверлея
             zIndex: 9998                       // z-index оверлея
         },
-        
+
         // Настройки модального окна
         modal: {
             zIndex: 9999,                      // z-index модального окна
@@ -37,7 +77,7 @@ export const cookieConsentConfig = {
             borderRadius: '12px',              // Скругление углов
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)' // Тень модального окна
         },
-        
+
         // Настройки для каждого типа модального окна
         modalTypes: {
             initial: {

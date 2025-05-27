@@ -69,7 +69,9 @@ export class CookieConsent {
                 visual: { ...cookieConsentConfig.visual, ...config.visual },
                 categories: { ...cookieConsentConfig.categories, ...config.categories },
                 texts: { ...cookieConsentConfig.texts, ...config.texts },
-                tagManagers: { ...cookieConsentConfig.tagManagers, ...config.tagManagers }
+                tagManagers: { ...cookieConsentConfig.tagManagers, ...config.tagManagers },
+                styles: { ...cookieConsentConfig.styles, ...config.styles },        // ✅ ДОБАВИТЬ ЭТУ СТРОКУ
+                security: { ...cookieConsentConfig.security, ...config.security }   // ✅ И ЭТУ ТОЖЕ
             };
 
             this._validateConfig();
@@ -112,10 +114,68 @@ export class CookieConsent {
     }
 
     /**
-     * Основная инициализация
+     * Загружает CSS файлы из конфигурации
+     */
+    _loadCSSFiles() {
+        if (!this.config.styles?.autoLoadCSS) {
+            this._logger.info('CSS auto-loading disabled');
+            return;
+        }
+
+        const cssFiles = this.config.styles.cssFiles || [];
+        if (cssFiles.length === 0) {
+            this._logger.info('No CSS files to load');
+            return;
+        }
+
+        cssFiles.forEach(cssPath => {
+            this._loadCSSFile(cssPath);
+        });
+    }
+
+    /**
+     * Загружает один CSS файл
+     * @param {string} cssPath - Путь к CSS файлу
+     */
+    _loadCSSFile(cssPath) {
+        // Проверяем, не загружен ли уже этот файл
+        const existingLink = document.querySelector(`link[href="${cssPath}"]`);
+        if (existingLink) {
+            this._logger.info(`CSS file already loaded: ${cssPath}`);
+            return;
+        }
+
+        // Формируем полный путь
+        const fullPath = cssPath.startsWith('http') ? cssPath : (cssPath.startsWith('/') ? cssPath : '/' + cssPath);
+
+        // Создаем link элемент
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = fullPath;
+
+        // Добавляем обработчики событий
+        link.onload = () => {
+            this._logger.info(`CSS file loaded successfully: ${fullPath}`);
+        };
+
+        link.onerror = (error) => {
+            this._logger.error(`Failed to load CSS file: ${fullPath}`, error);
+        };
+
+        // Добавляем в head
+        document.head.appendChild(link);
+        this._logger.info(`Loading CSS file: ${fullPath}`);
+    }
+
+    /**
+     * Основная инициализация 
      */
     _initialize() {
         try {
+            // Загружаем CSS файлы перед показом модальных окон
+            this._loadCSSFiles();
+
             if (this.isSimpleMode) {
                 // В простом режиме: новая логика
                 const savedConsent = this._getStoredConsent();
@@ -1074,25 +1134,51 @@ export class CookieConsent {
     }
 
     /**
-     * Добавляет заголовки безопасности
+     * Добавляет заголовки безопасности на основе конфигурации
      */
     _addSecurityHeaders() {
+        // Проверяем, включено ли добавление CSP заголовков
+        if (!this.config.security?.enableCSP) {
+            this._logger.info('CSP headers disabled in config');
+            return;
+        }
+
+        const cspConfig = this.config.security.csp;
+        if (!cspConfig) {
+            this._logger.warn('CSP config not found');
+            return;
+        }
+
+        // Строим CSP строку из конфигурации
+        const cspDirectives = [];
+
+        Object.entries(cspConfig).forEach(([directive, sources]) => {
+            if (Array.isArray(sources) && sources.length > 0) {
+                cspDirectives.push(`${directive} ${sources.join(' ')}`);
+            }
+        });
+
+        if (cspDirectives.length === 0) {
+            this._logger.warn('No CSP directives found in config');
+            return;
+        }
+
+        const cspContent = cspDirectives.join('; ');
+
+        // Проверяем, не добавлен ли уже CSP заголовок
+        const existingMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+        if (existingMeta) {
+            this._logger.info('CSP header already exists, skipping');
+            return;
+        }
+
+        // Создаем и добавляем meta тег с CSP
         const meta = document.createElement('meta');
         meta.httpEquiv = 'Content-Security-Policy';
-        meta.content = "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
-            "https://www.googletagmanager.com " +
-            "https://www.google-analytics.com " +
-            "https://ssl.google-analytics.com " +
-            "https://cdn.matomo.cloud; " +
-            "connect-src 'self' " +
-            "https://www.google-analytics.com " +
-            "https://region1.google-analytics.com " +
-            "https://analytics.google.com " +
-            "https://stats.g.doubleclick.net; " +
-            "img-src 'self' data: https:; " +
-            "style-src 'self' 'unsafe-inline';";
+        meta.content = cspContent;
         document.head.appendChild(meta);
+
+        this._logger.info('CSP header added:', cspContent);
     }
 
     /**
