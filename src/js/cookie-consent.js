@@ -62,17 +62,28 @@ export class CookieConsent {
      */
     _initializeConfig(config) {
         try {
+            // Добавляем отладочную информацию
+            this._logger.info('Config received:', config);
+            this._logger.info('Core config:', config.core);
+
             this.isSimpleMode = config.simpleMode || false;
+            // Изменяем способ получения testMode
+            this.isTestMode = config.core?.testMode || cookieConsentConfig.core?.testMode || false;
+            this._logger.info('Test mode status:', this.isTestMode);
 
             this.config = {
+                core: { ...cookieConsentConfig.core, ...config.core },
                 modalTypes: cookieConsentConfig.modalTypes,
                 visual: { ...cookieConsentConfig.visual, ...config.visual },
                 categories: { ...cookieConsentConfig.categories, ...config.categories },
                 texts: { ...cookieConsentConfig.texts, ...config.texts },
                 tagManagers: { ...cookieConsentConfig.tagManagers, ...config.tagManagers },
-                styles: { ...cookieConsentConfig.styles, ...config.styles },        // ✅ ДОБАВИТЬ ЭТУ СТРОКУ
-                security: { ...cookieConsentConfig.security, ...config.security }   // ✅ И ЭТУ ТОЖЕ
+                styles: { ...cookieConsentConfig.styles, ...config.styles },
+                security: { ...cookieConsentConfig.security, ...config.security }
             };
+
+            this._logger.info('Final config after merge:', this.config);
+            this._logger.info('Final core config:', this.config.core);
 
             this._validateConfig();
         } catch (error) {
@@ -118,17 +129,18 @@ export class CookieConsent {
      */
     _loadCSSFiles() {
         if (!this.config.styles?.autoLoadCSS) {
-            this._logger.info('CSS auto-loading disabled');
+            console.log('[CookieConsent] ℹ️ CSS auto-loading disabled');
             return;
         }
 
         const cssFiles = this.config.styles.cssFiles || [];
         if (cssFiles.length === 0) {
-            this._logger.info('No CSS files to load');
+            console.log('[CookieConsent] ℹ️ No CSS files to load');
             return;
         }
 
         cssFiles.forEach(cssPath => {
+            console.log('[CookieConsent] 🎨 Loading CSS file:', cssPath);
             this._loadCSSFile(cssPath);
         });
     }
@@ -141,7 +153,7 @@ export class CookieConsent {
         // Проверяем, не загружен ли уже этот файл
         const existingLink = document.querySelector(`link[href="${cssPath}"]`);
         if (existingLink) {
-            this._logger.info(`CSS file already loaded: ${cssPath}`);
+            console.log('[CookieConsent] ℹ️ CSS file already loaded:', cssPath);
             return;
         }
 
@@ -156,11 +168,11 @@ export class CookieConsent {
 
         // Добавляем обработчики событий
         link.onload = () => {
-            this._logger.info(`CSS file loaded successfully: ${fullPath}`);
+            console.log('[CookieConsent] ✅ CSS file loaded successfully:', fullPath);
         };
 
         link.onerror = (error) => {
-            this._logger.error(`Failed to load CSS file: ${fullPath}`, error);
+            console.error('[CookieConsent] ❌ Failed to load CSS file:', fullPath, error);
         };
 
         // Добавляем в head
@@ -173,8 +185,24 @@ export class CookieConsent {
      */
     _initialize() {
         try {
+            // Добавляем отладочную информацию
+            this._logger.info('Starting initialization. Test mode:', this.isTestMode);
+            this._logger.info('Current config:', this.config);
+
             // Загружаем CSS файлы перед показом модальных окон
             this._loadCSSFiles();
+
+            // Проверяем тестовый режим
+            if (this.isTestMode) {
+                this._logger.info('Test mode enabled - using predefined consent');
+                const testConsent = this._createTestModeConsent();
+                this._saveConsent(testConsent);
+                this._clearUnauthorizedCookies(testConsent);
+                this._loadScripts(testConsent);
+                return;
+            }
+
+            this._logger.info('Test mode not enabled, continuing with normal initialization');
 
             if (this.isSimpleMode) {
                 // В простом режиме: новая логика
@@ -911,18 +939,26 @@ export class CookieConsent {
      * Сохраняет согласие
      */
     _saveConsent(consent) {
-        this._logger.info('Saving consent:', consent);
+        console.group('[CookieConsent] 💾 Saving Consent');
+        console.log('[CookieConsent] 📝 Consent to save:', consent);
 
         try {
             localStorage.setItem('cookieConsent', JSON.stringify(consent));
+            console.log('[CookieConsent] ✅ Consent saved to localStorage');
 
-            // Отправляем событие
+            // Отправляем события
             this._sendGtmEvent(this.config.tagManagers.gtm.events.consent, { consent });
-            window.dispatchEvent(new CustomEvent('cookieConsent', { detail: consent }));
+
+            // Отправляем кастомное событие
+            const consentEvent = new CustomEvent('cookieConsent', { detail: consent });
+            window.dispatchEvent(consentEvent);
+            console.log('[CookieConsent] 📢 Custom event dispatched:', consentEvent);
 
         } catch (error) {
-            this._logger.error('Failed to save consent:', error);
+            console.error('[CookieConsent] ❌ Failed to save consent:', error);
         }
+
+        console.groupEnd();
     }
 
     /**
@@ -942,13 +978,19 @@ export class CookieConsent {
      * Загружает скрипты на основе согласия
      */
     _loadScripts(consent) {
-        this._logger.info('Loading scripts based on consent:', consent);
+        console.group('[CookieConsent] 🔄 Loading Scripts');
+        console.log('[CookieConsent] 📝 Current Consent State:', consent);
 
         Object.entries(consent).forEach(([category, isAllowed]) => {
+            console.log(`[CookieConsent] ${category}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
             if (isAllowed && this.config.categories[category]?.scripts) {
+                console.group(`[CookieConsent] 📜 Loading scripts for ${category}`);
                 this._loadCategoryScripts(category);
+                console.groupEnd();
             }
         });
+
+        console.groupEnd();
     }
 
     /**
@@ -1089,17 +1131,32 @@ export class CookieConsent {
     }
 
     /**
-     * Отправляет событие в GTM
+     * Отправляет событие в GTM и логирует все события согласия
      */
     _sendGtmEvent(eventName, data = {}) {
+        // Подробное логирование всех событий
+        console.group('[CookieConsent] 🍪 Event Tracking');
+        console.log('[CookieConsent] 📣 Event Name:', eventName);
+        console.log('[CookieConsent] 📦 Event Data:', data);
+
+        // GTM события
         if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
-            dataLayer.push({
+            const eventData = {
                 event: eventName,
                 ...data,
                 timestamp: new Date().toISOString()
-            });
-            this._logger.info(`GTM event sent: ${eventName}`, data);
+            };
+            console.log('[CookieConsent] 📊 GTM Event Data:', eventData);
+            dataLayer.push(eventData);
         }
+
+        // Matomo события
+        if (this.config.tagManagers?.matomo?.enabled && typeof _paq !== 'undefined') {
+            console.log('[CookieConsent] 📈 Matomo Event:', ['trackEvent', 'CookieConsent', eventName, JSON.stringify(data)]);
+            _paq.push(['trackEvent', 'CookieConsent', eventName, JSON.stringify(data)]);
+        }
+
+        console.groupEnd();
     }
 
     /**
@@ -1327,11 +1384,49 @@ export class CookieConsent {
         }
     }
 
+    /**
+     * Создает объект согласия для тестового режима
+     */
+    _createTestModeConsent() {
+        console.group('[CookieConsent] 🧪 Test Mode Consent');
+
+        const testConsent = {
+            is_cookies_accepted: true,
+            timestamp: new Date().getTime()
+        };
+
+        const testModeConsent = this.config.core.testModeConsent || {};
+
+        // Проходим по всем категориям
+        Object.entries(this.config.categories).forEach(([key, category]) => {
+            const isAllowed = category.required || testModeConsent[key] || false;
+            testConsent[key] = isAllowed;
+            console.log(`[CookieConsent] ${key}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
+        });
+
+        console.log('[CookieConsent] 📋 Final Test Consent:', testConsent);
+        console.groupEnd();
+        return testConsent;
+    }
 
     // Публичные статические методы API
     static init(options = {}) {
+        // Добавляем отладочную информацию
+        console.log('[CookieConsent] 🚀 Initializing with options:', options);
+
+        // Проверяем и мержим с дефолтной конфигурацией
+        const mergedOptions = {
+            core: {
+                ...cookieConsentConfig.core,
+                ...(options.core || {})
+            },
+            ...options
+        };
+
+        console.log('[CookieConsent] 🔄 Merged options:', mergedOptions);
+
         if (!this.instance) {
-            this.instance = new CookieConsent(options);
+            this.instance = new CookieConsent(mergedOptions);
         }
         return this.instance;
     }
@@ -1372,6 +1467,41 @@ export class CookieConsent {
         if (this.instance) {
             this.instance._hide();
         }
+    }
+
+    // Добавляем статический метод для тестирования
+    static testConsent() {
+        console.group('[CookieConsent] 🧪 Test Results');
+
+        // Проверяем текущее состояние
+        const currentConsent = CookieConsent.getConsent();
+        console.log('[CookieConsent] 📊 Current Consent State:', currentConsent);
+
+        // Проверяем каждую категорию
+        Object.keys(cookieConsentConfig.categories).forEach(category => {
+            const hasConsent = CookieConsent.hasConsent(category);
+            console.log(`[CookieConsent] ${category}:`, hasConsent ? '✅ Allowed' : '❌ Denied');
+        });
+
+        // Проверяем localStorage
+        const storedConsent = localStorage.getItem('cookieConsent');
+        console.log('[CookieConsent] 💾 Stored Consent:', storedConsent ? JSON.parse(storedConsent) : 'None');
+
+        // Проверяем GTM
+        if (typeof dataLayer !== 'undefined') {
+            console.log('[CookieConsent] 📊 GTM dataLayer:', dataLayer);
+        } else {
+            console.log('[CookieConsent] ⚠️ GTM not initialized');
+        }
+
+        // Проверяем Matomo
+        if (typeof _paq !== 'undefined') {
+            console.log('[CookieConsent] 📈 Matomo initialized');
+        } else {
+            console.log('[CookieConsent] ⚠️ Matomo not initialized');
+        }
+
+        console.groupEnd();
     }
 }
 

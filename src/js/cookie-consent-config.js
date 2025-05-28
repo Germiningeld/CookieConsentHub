@@ -6,9 +6,17 @@
 export const cookieConsentConfig = {
     // Основные настройки
     core: {
-        simpleMode: true,                     // Простой режим (true/false)
+        simpleMode: false,                     // Простой режим (true/false)
         debugMode: true,                      // Режим отладки
         autoInit: true,                        // Автоматическая инициализация при загрузке DOM
+        
+        testMode: true,                      // Режим тестирования (без показа баннеров)
+        testModeConsent: {                    // Настройки согласия для тестового режима
+            analytics: true,                  // Включить аналитику в тестовом режиме
+            necessary: true,                  // Необходимые куки всегда включены
+            marketing: false,                 // Маркетинговые куки выключены
+            functional: false                 // Функциональные куки выключены
+        },
         consentExpiration: 30 * 24 * 60 * 60 * 1000 // Срок действия согласия в миллисекундах (30 дней)
     },
     styles: {
@@ -38,7 +46,7 @@ export const cookieConsentConfig = {
                 "https://mc.yandex.ru",              // AJAX запросы Яндекс.Метрики
                 "https://yastatic.net",
                 "https://widget.yourgood.app",
-                "https://cdn.callibri.ru" 
+                "https://cdn.callibri.ru"
             ],
             'img-src': [
                 "'self'",
