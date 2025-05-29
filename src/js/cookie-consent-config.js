@@ -7,9 +7,9 @@ export const cookieConsentConfig = {
     // Основные настройки
     core: {
         simpleMode: false,                     // Простой режим (true/false)
-        debugMode: true,                      // Режим отладки
+        debugMode: false,                      // Режим отладки
         autoInit: true,                        // Автоматическая инициализация при загрузке DOM
-        
+
         testMode: true,                      // Режим тестирования (без показа баннеров)
         testModeConsent: {                    // Настройки согласия для тестового режима
             analytics: true,                  // Включить аналитику в тестовом режиме
@@ -22,13 +22,13 @@ export const cookieConsentConfig = {
     styles: {
         autoLoadCSS: true,                    // Включить/выключить автозагрузку CSS
         cssFiles: [                           // Список файлов для загрузки
-            '/css/main.min.css',        // Основные стили
+            '/assets/cookie_consent/css/main.min.css',        // Основные стили
         ]
     },
 
     // Настройки Content Security Policy
     security: {
-        enableCSP: true,                            // Включить автоматическое добавление CSP заголовков
+        enableCSP: false,                            // Включить автоматическое добавление CSP заголовков
         csp: {
             'default-src': ["'self'"],
             'script-src': [
@@ -81,52 +81,60 @@ export const cookieConsentConfig = {
         modal: {
             zIndex: 9999,                      // z-index модального окна
             allowClose: true,                  // Разрешить закрытие модального окна
-            maxWidth: '500px',                 // Максимальная ширина модального окна
+            maxWidth: '500px',                 // Максимальная ширина для центрированных окон
             borderRadius: '12px',              // Скругление углов
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)' // Тень модального окна
         },
 
         // Настройки для каждого типа модального окна
         modalTypes: {
+            // Начальное окно с выбором разрешений
             initial: {
-                position: 'center',            // Позиция: center, top, bottom
-                maxWidth: '500px',             // Максимальная ширина
+                position: 'center',            // Позиция окна: center - по центру экрана
+                maxWidth: '500px',             // Максимальная ширина (для center)
                 showOverlay: true,             // Показывать затемнение фона
-                allowClose: true,              // Разрешить закрытие окна
+                allowClose: true,              // Разрешить закрытие окна через крестик
                 closeOnOverlayClick: true,     // Закрывать при клике на затемнение
-                animation: 'fade',             // Тип анимации: fade, slide, none
+                animation: 'fade',             // Тип анимации: fade - плавное появление
                 preventScroll: true,           // Блокировать прокрутку страницы
-                showExperienceImprove: true    // Показывать баннер улучшения опыта
+                showExperienceImprove: true    // Показывать баннер улучшения опыта после выбора
             },
+
+            // Окно настроек (открывается по кнопке)
             manualSettings: {
-                position: 'center',
-                maxWidth: '500px',
-                showOverlay: true,
-                allowClose: true,
-                closeOnOverlayClick: true,
-                animation: 'fade',
-                preventScroll: true,
-                showExperienceImprove: true
+                position: 'center',            // Позиция окна: center - по центру экрана
+                maxWidth: '500px',             // Максимальная ширина (для center)
+                showOverlay: true,             // Показывать затемнение фона
+                allowClose: true,              // Разрешить закрытие окна через крестик
+                closeOnOverlayClick: true,     // Закрывать при клике на затемнение
+                animation: 'fade',             // Тип анимации: fade - плавное появление
+                preventScroll: true,           // Блокировать прокрутку страницы
+                showExperienceImprove: true    // Показывать баннер улучшения опыта после выбора
             },
+
+            // Баннер "Улучшите свой опыт"
             experienceImprove: {
-                position: 'center',
-                maxWidth: '400px',
-                showOverlay: false,            // Не показывать затемнение для баннера
-                allowClose: true,
-                closeOnOverlayClick: false,
-                animation: 'slide',
-                preventScroll: false,          // Не блокировать прокрутку для баннера
-                showExperienceImprove: false   // Это сам баннер
+                position: 'center',            // Позиция окна: center - по центру экрана
+                maxWidth: '400px',             // Максимальная ширина (для center)
+                showOverlay: false,            // Не показывать затемнение фона
+                allowClose: true,              // Разрешить закрытие окна через крестик
+                closeOnOverlayClick: false,    // Не закрывать при клике вне окна
+                animation: 'slide',            // Тип анимации: slide - выезжает сверху
+                preventScroll: false,          // Не блокировать прокрутку страницы
+                showExperienceImprove: false   // Не показывать повторно этот баннер
             },
+
+            // Простое уведомление о cookie (для simpleMode)
             simpleNotification: {
-                position: 'bottom',
-                maxWidth: '500px',
-                showOverlay: false,
-                allowClose: false,             // Не разрешать закрытие
-                closeOnOverlayClick: false,
-                animation: 'slide',
-                preventScroll: false,
-                showExperienceImprove: false
+                position: 'bottom',            // Позиция окна: bottom - прикреплено к низу экрана
+                maxWidth: '100%',              // Максимальная ширина (для bottom/top позиций)
+                padding: '20px',               // Отступы по краям экрана
+                showOverlay: false,            // Не показывать затемнение фона
+                allowClose: false,             // Не разрешать закрытие через крестик
+                closeOnOverlayClick: false,    // Не закрывать при клике вне окна
+                animation: 'slide',            // Тип анимации: slide - выезжает снизу
+                preventScroll: false,          // Не блокировать прокрутку страницы
+                showExperienceImprove: false   // Не показывать баннер улучшения опыта
             }
         }
     },
@@ -143,9 +151,11 @@ export const cookieConsentConfig = {
             dataLayer: 'dataLayer'
         },
         matomo: {
-            enabled: false,
-            siteId: null,
-            trackerUrl: null
+            enabled: true,                      // Включаем Matomo Tag Manager
+            events: {
+                consent: 'cookieConsent',       // Событие согласия
+                settings: 'cookieSettings'      // Событие открытия настроек
+            }
         }
     },
 
@@ -166,25 +176,39 @@ export const cookieConsentConfig = {
             title: 'Аналитика',
             description: 'Эти файлы cookie помогают нам улучшать наш сайт, собирая информацию о его использовании. Все данные анонимизированы.',
             required: false,
+            cookiePrefixes: [
+                '_ym_',    // Яндекс.Метрика
+                '_ga',     // Google Analytics
+                '_gid',    // Google Analytics
+                '_gat',    // Google Analytics
+                '_pk_',    // Matomo Analytics
+                'mtm_'     // Matomo Tag Manager
+            ],
+            cookiesToRemove: [
+                'mtm_consent',         // Matomo Tag Manager consent cookie
+                'mtm_consent_removed'  // Matomo Tag Manager consent removed cookie
+            ],
             scripts: [
                 {
-                    type: 'file',
-                    path: '/js/scripts/analytics.js'
+                    type: 'inline',
+                    code: 'console.log("testEvent отправлен");'
                 },
-                // {
-                //     type: 'gtm',
-                //     name: 'loadAnalytics',
-                //     data: {
-                //         source: 'cookie-consent',
-                //         category: 'analytics'
-                //     }
-                // }
+                {
+                    type: 'event',
+                    name: 'testEvent'                    // Тестовое событие для MTM
+                }
             ]
         },
         // marketing: {
         //     title: 'Маркетинг',
         //     description: 'Эти файлы cookie используются для отслеживания посетителей на веб-сайтах с целью показа релевантной рекламы.',
         //     required: false,
+        //     cookiePrefixes: [
+        //         '_fbp',    // Facebook Pixel
+        //         '_fbc',    // Facebook Click ID
+        //         '_ym_metrika',  // Яндекс.Метрика (рекламные)
+        //         'yaAdvId'  // Яндекс.Директ
+        //     ],
         //     scripts: [
         //         {
         //             type: 'file',

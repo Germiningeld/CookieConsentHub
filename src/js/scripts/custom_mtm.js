@@ -1,12 +1,12 @@
 /**
- * Custom Matomo Tag Manager implementation with delayed start
- * This implementation ensures no tracking occurs until explicit consent is given
+ * Custom Matomo Tag Manager implementation
+ * Only disables tracking while keeping standard event handling
  */
 
 (function (window, document) {
     'use strict';
 
-    // Configuration object
+    // Basic configuration
     window.MatomoTagManagerConfig = {
         containerId: 'ZcN4ilsH',
         containerUrl: 'https://mtm.klinika-korsakov.ru/js/container_{{containerId}}.js',
@@ -15,18 +15,49 @@
         debug: false
     };
 
-    // Initialize MTM array without starting
+    // Initialize MTM array
     window._mtm = window._mtm || [];
 
-    // Logger utility
-    const log = (message, type = 'info') => {
+    // Simple logger
+    const log = (message) => {
         if (window.MatomoTagManagerConfig.debug) {
-            console[type](`[MTM] ${message}`);
+            console.log(`[MTM] ${message}`);
         }
     };
 
     // Main MTM controller
     window.MatomoTagManager = {
+        containers: {},
+
+        /**
+         * Add container configuration
+         * @param {Object} container Container configuration
+         */
+        addContainer: function (container) {
+            log('Adding container: ' + container.id);
+            this.containers[container.id] = container;
+        },
+
+        /**
+         * Get container by ID
+         * @param {string} containerId 
+         * @returns {Object|null}
+         */
+        getContainer: function (containerId) {
+            return this.containers[containerId] || null;
+        },
+
+        /**
+         * Initialize container
+         * @param {Object} container Container configuration
+         */
+        initializeContainer: function (container) {
+            log('Initializing container: ' + container.id);
+            if (typeof container.run === 'function') {
+                container.run();
+            }
+        },
+
         /**
          * Initialize MTM container
          * @param {Object} config Optional configuration object
@@ -54,25 +85,32 @@
                     script.onload = () => {
                         window.MatomoTagManagerConfig.isInitialized = true;
                         log('Container loaded successfully');
+
+                        // Initialize container if available
+                        const container = this.getContainer(window.MatomoTagManagerConfig.containerId);
+                        if (container) {
+                            this.initializeContainer(container);
+                        }
+
                         resolve();
                     };
 
                     script.onerror = (error) => {
-                        log('Failed to load container', 'error');
+                        log('Failed to load container');
                         reject(error);
                     };
 
                     const firstScript = document.getElementsByTagName('script')[0];
                     firstScript.parentNode.insertBefore(script, firstScript);
                 } catch (error) {
-                    log('Error during initialization', 'error');
+                    log('Error during initialization');
                     reject(error);
                 }
             });
         },
 
         /**
-         * Start MTM tracking
+         * Start MTM
          * @returns {boolean}
          */
         start: function () {
@@ -82,66 +120,68 @@
             }
 
             if (!window.MatomoTagManagerConfig.isInitialized) {
-                log('MTM not initialized. Call init() first', 'error');
+                log('MTM not initialized. Call init() first');
                 return false;
             }
 
             try {
-                window._mtm.push({
-                    'mtm.startTime': (new Date().getTime()),
-                    'event': 'mtm.Start'
-                });
+                // Disable tracking
+                window._mtm.push({ 'mtm.disableTracking': true });
+
+                // Start MTM
+                window._mtm.push({ 'mtm.startTime': (new Date().getTime()) });
                 window.MatomoTagManagerConfig.isStarted = true;
                 log('Started successfully');
                 return true;
             } catch (error) {
-                log('Error during start', 'error');
+                log('Error during start');
                 return false;
             }
         },
 
         /**
-         * Push custom event to MTM
+         * Push event to MTM (standard way)
          * @param {string} eventName 
          * @param {Object} eventData 
          */
         pushEvent: function (eventName, eventData = {}) {
             if (!window.MatomoTagManagerConfig.isStarted) {
-                log('MTM not started. Event not pushed: ' + eventName, 'warn');
+                log('MTM not started. Event not pushed: ' + eventName);
                 return;
             }
 
-            try {
-                window._mtm.push({
-                    event: eventName,
-                    ...eventData
-                });
-                log(`Event pushed: ${eventName}`);
-            } catch (error) {
-                log(`Error pushing event: ${eventName}`, 'error');
+            // Use standard MTM event format
+            window._mtm.push({
+                'event': eventName,
+                ...eventData
+            });
+        },
+
+        /**
+         * Handle cookie consent changes
+         * @param {Object} consent Consent object with category states
+         */
+        handleConsentChange: function (consent) {
+            if (!window.MatomoTagManagerConfig.isStarted) {
+                log('MTM not started. Consent change not processed');
+                return;
             }
+
+            log('Processing consent change:', consent);
+
+            // Send general consent change event
+            this.pushEvent('consentUpdate', {
+                consentState: consent
+            });
+
+            // Send specific events for each category
+            Object.entries(consent).forEach(([category, state]) => {
+                this.pushEvent('consentCategory', {
+                    category: category,
+                    state: state
+                });
+            });
         }
     };
-
-    // Integration with CookieConsentHub
-    if (window.CookieConsent) {
-        window.addEventListener('cookieConsent', function (event) {
-            const consent = event.detail;
-
-            // Check if analytics/statistics category is accepted
-            if (consent.analytics || consent.statistics) {
-                // Initialize and start MTM if consent is given
-                window.MatomoTagManager.init()
-                    .then(() => {
-                        window.MatomoTagManager.start();
-                        // Push consent data to MTM
-                        window.MatomoTagManager.pushEvent('cookieConsent', consent);
-                    })
-                    .catch(error => {
-                        log('Failed to initialize MTM after consent', 'error');
-                    });
-            }
-        });
-    }
 
 })(window, document);

@@ -19,8 +19,14 @@ export class CookieConsent {
             return CookieConsent.instance;
         }
 
+        // Включаем отладку глобально если указано в конфигурации
+        if (config.core?.debugMode) {
+            window.__COOKIE_CONSENT_DEBUG__ = true;
+        }
+
         this._logger = new Logger('CookieConsent');
-        this._logger.info('Initializing CookieConsent');
+        this._logger.info('🚀 Initializing CookieConsent');
+        this._logger.info('📝 Configuration received:', config);
 
         // Генерируем CSRF токен
         this._csrfToken = this._getStoredCsrfToken() || this._generateCsrfToken();
@@ -34,6 +40,8 @@ export class CookieConsent {
         CookieConsent.instance = this;
         window.cookieConsentInstance = this;
 
+        this._logger.info('✅ Instance created and stored');
+
         // Добавляем заголовки безопасности
         this._addSecurityHeaders();
 
@@ -45,6 +53,10 @@ export class CookieConsent {
      * Инициализирует внутреннее состояние
      */
     _initializeState() {
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🔄 Initializing State');
+        }
+
         this.notification = null;
         this.overlay = null;
         this.isVisible = false;
@@ -54,22 +66,27 @@ export class CookieConsent {
         this._cookiesCleared = false;
         this._pendingReload = false;
         this._overlayClickHandler = null;
-        this._closedViaCloseButton = false; // Флаг для отслеживания способа закрытия
+        this._closedViaCloseButton = false;
+
+        if (this._logger.isDebugEnabled) {
+            console.log('[CookieConsent] Initial state set');
+            console.groupEnd();
+        }
     }
 
     /**
      * Инициализирует конфигурацию
      */
     _initializeConfig(config) {
-        try {
-            // Добавляем отладочную информацию
-            this._logger.info('Config received:', config);
-            this._logger.info('Core config:', config.core);
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🔧 Initializing Config');
+            console.log('[CookieConsent] Input config:', config);
+            console.log('[CookieConsent] Default config:', cookieConsentConfig);
+        }
 
+        try {
             this.isSimpleMode = config.simpleMode || false;
-            // Изменяем способ получения testMode
             this.isTestMode = config.core?.testMode || cookieConsentConfig.core?.testMode || false;
-            this._logger.info('Test mode status:', this.isTestMode);
 
             this.config = {
                 core: { ...cookieConsentConfig.core, ...config.core },
@@ -82,13 +99,27 @@ export class CookieConsent {
                 security: { ...cookieConsentConfig.security, ...config.security }
             };
 
-            this._logger.info('Final config after merge:', this.config);
-            this._logger.info('Final core config:', this.config.core);
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📝 Final merged config:', this.config);
+                console.log('[CookieConsent] Simple mode:', this.isSimpleMode);
+                console.log('[CookieConsent] Test mode:', this.isTestMode);
+            }
 
             this._validateConfig();
+
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] ✅ Config initialized successfully');
+            }
         } catch (error) {
             this._logger.error('Failed to initialize config:', error);
+            if (this._logger.isDebugEnabled) {
+                console.error('[CookieConsent] ❌ Config initialization error:', error);
+            }
             throw error;
+        }
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
         }
     }
 
@@ -129,18 +160,24 @@ export class CookieConsent {
      */
     _loadCSSFiles() {
         if (!this.config.styles?.autoLoadCSS) {
-            console.log('[CookieConsent] ℹ️ CSS auto-loading disabled');
+            if (this._logger.isDebugEnabled) {
+                this._logger.info('CSS auto-loading disabled');
+            }
             return;
         }
 
         const cssFiles = this.config.styles.cssFiles || [];
         if (cssFiles.length === 0) {
-            console.log('[CookieConsent] ℹ️ No CSS files to load');
+            if (this._logger.isDebugEnabled) {
+                this._logger.info('No CSS files to load');
+            }
             return;
         }
 
         cssFiles.forEach(cssPath => {
-            console.log('[CookieConsent] 🎨 Loading CSS file:', cssPath);
+            if (this._logger.isDebugEnabled) {
+                this._logger.info('Loading CSS file: ' + cssPath);
+            }
             this._loadCSSFile(cssPath);
         });
     }
@@ -153,7 +190,9 @@ export class CookieConsent {
         // Проверяем, не загружен ли уже этот файл
         const existingLink = document.querySelector(`link[href="${cssPath}"]`);
         if (existingLink) {
-            console.log('[CookieConsent] ℹ️ CSS file already loaded:', cssPath);
+            if (this._logger.isDebugEnabled) {
+                this._logger.info('CSS file already loaded: ' + cssPath);
+            }
             return;
         }
 
@@ -168,16 +207,22 @@ export class CookieConsent {
 
         // Добавляем обработчики событий
         link.onload = () => {
-            console.log('[CookieConsent] ✅ CSS file loaded successfully:', fullPath);
+            if (this._logger.isDebugEnabled) {
+                this._logger.info('CSS file loaded successfully: ' + fullPath);
+            }
         };
 
         link.onerror = (error) => {
-            console.error('[CookieConsent] ❌ Failed to load CSS file:', fullPath, error);
+            if (this._logger.isDebugEnabled) {
+                this._logger.error('Failed to load CSS file: ' + fullPath, error);
+            }
         };
 
         // Добавляем в head
         document.head.appendChild(link);
-        this._logger.info(`Loading CSS file: ${fullPath}`);
+        if (this._logger.isDebugEnabled) {
+            this._logger.info('Loading CSS file: ' + fullPath);
+        }
     }
 
     /**
@@ -360,9 +405,15 @@ export class CookieConsent {
      * Создает DOM элементы
      */
     _createElements() {
-        if (document.querySelector('.cookie-consent')) {
-            document.querySelector('.cookie-consent')?.remove();
-            document.querySelector('.cookie-consent-overlay')?.remove();
+        // Удаляем существующие элементы, если они есть
+        const existingNotification = document.querySelector('.cookie-consent');
+        const existingOverlay = document.querySelector('.cookie-consent-overlay');
+
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+        if (existingOverlay) {
+            existingOverlay.remove();
         }
 
         this._createOverlay();
@@ -642,25 +693,66 @@ export class CookieConsent {
      * Добавляет обработчики событий
      */
     _addEventListeners() {
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🎯 Adding Event Listeners');
+        }
+
         // Удаляем старые обработчики
         this._removeOldEventListeners();
 
+        if (!this.notification) {
+            this._logger.warn('Notification element not found when adding event listeners');
+            if (this._logger.isDebugEnabled) {
+                console.groupEnd();
+            }
+            return;
+        }
+
         // Добавляем новые обработчики
         const handlers = {
-            '.cookie-consent__button--all': () => this._handleAcceptAll(),
-            '.cookie-consent__button--necessary': () => this._handleAcceptNecessary(),
-            '.cookie-consent__button--selected': () => this._handleAcceptSelected(),
-            '.cookie-consent__button--accept': () => this._handleSimpleAccept(),
-            '.cookie-consent__button--keep': () => this._handleKeepChoice(),
+            '.cookie-consent__button--all': () => {
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ "Accept All" button clicked');
+                }
+                this._handleAcceptAll();
+            },
+            '.cookie-consent__button--necessary': () => {
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ "Accept Necessary" button clicked');
+                }
+                this._handleAcceptNecessary();
+            },
+            '.cookie-consent__button--selected': () => {
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ "Accept Selected" button clicked');
+                }
+                this._handleAcceptSelected();
+            },
+            '.cookie-consent__button--accept': () => {
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ "Accept" button clicked');
+                }
+                this._handleSimpleAccept();
+            },
+            '.cookie-consent__button--keep': () => {
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ "Keep Choice" button clicked');
+                }
+                this._handleKeepChoice();
+            },
             '.cookie-consent__link--settings': (e) => {
                 e.preventDefault();
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ Settings link clicked');
+                }
                 this._openSettings();
             },
             '.cookie-consent__close-button': () => {
-                // Устанавливаем флаг закрытия через кнопку
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 🖱️ Close button clicked');
+                }
                 this._closedViaCloseButton = true;
                 this._handleClose();
-                // Сбрасываем флаг после обработки
                 setTimeout(() => {
                     this._closedViaCloseButton = false;
                 }, 100);
@@ -669,14 +761,20 @@ export class CookieConsent {
 
         Object.entries(handlers).forEach(([selector, handler]) => {
             const elements = this.notification.querySelectorAll(selector);
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] Found ${elements.length} elements for selector: ${selector}`);
+            }
             elements.forEach(element => {
                 element.addEventListener('click', handler);
+                if (this._logger.isDebugEnabled) {
+                    console.log(`[CookieConsent] Added click handler to element:`, element);
+                }
             });
         });
 
         // Обработчик для оверлея
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
-        if (modalSettings?.closeOnOverlayClick) {
+        if (modalSettings?.closeOnOverlayClick && this.overlay) {
             // Удаляем старый обработчик если есть
             if (this._overlayClickHandler) {
                 this.overlay.removeEventListener('click', this._overlayClickHandler);
@@ -686,6 +784,9 @@ export class CookieConsent {
             this._overlayClickHandler = (e) => {
                 // Проверяем, что клик был именно по оверлею, а не по модальному окну
                 if (e.target === this.overlay) {
+                    if (this._logger.isDebugEnabled) {
+                        console.log('[CookieConsent] 🖱️ Overlay clicked');
+                    }
                     this._closedViaCloseButton = true;
                     this._handleClose();
                     setTimeout(() => {
@@ -695,6 +796,13 @@ export class CookieConsent {
             };
 
             this.overlay.addEventListener('click', this._overlayClickHandler);
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] Added overlay click handler');
+            }
+        }
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
         }
     }
 
@@ -702,24 +810,46 @@ export class CookieConsent {
      * Удаляет старые обработчики событий
      */
     _removeOldEventListeners() {
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🗑️ Removing old event listeners');
+        }
+
         const selectors = [
-            'button',
+            '.cookie-consent__button--all',
+            '.cookie-consent__button--necessary',
+            '.cookie-consent__button--selected',
+            '.cookie-consent__button--accept',
+            '.cookie-consent__button--keep',
             '.cookie-consent__link--settings',
+            '.cookie-consent__close-button',
             '.cookie-consent__checkbox input[type="checkbox"]'
         ];
 
         selectors.forEach(selector => {
             const elements = this.notification.querySelectorAll(selector);
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] Removing listeners from ${elements.length} elements matching "${selector}"`);
+            }
             elements.forEach(element => {
                 const clone = element.cloneNode(true);
+                if (this._logger.isDebugEnabled) {
+                    console.log(`[CookieConsent] Cloning element:`, element);
+                }
                 element.parentNode.replaceChild(clone, element);
             });
         });
 
         // Также удаляем обработчик оверлея
         if (this._overlayClickHandler) {
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] Removing overlay click handler');
+            }
             this.overlay.removeEventListener('click', this._overlayClickHandler);
             this._overlayClickHandler = null;
+        }
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
         }
     }
 
@@ -729,6 +859,10 @@ export class CookieConsent {
     _show() {
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
         if (!modalSettings) return;
+
+        if (!this.notification || !this.overlay) {
+            this._createElements();
+        }
 
         this.notification.classList.add('cookie-consent--visible');
 
@@ -763,6 +897,10 @@ export class CookieConsent {
      * Скрывает модальное окно
      */
     _hide() {
+        if (!this.notification || !this.overlay) {
+            return;
+        }
+
         this._logger.info('Hiding modal');
 
         this.notification.classList.remove('cookie-consent--visible');
@@ -794,19 +932,45 @@ export class CookieConsent {
      * Обработчики событий
      */
     _handleAcceptAll() {
-        this._logger.info('Accept all clicked - hiding modal');
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🎯 Handling Accept All');
+        }
+
+        this._logger.info('Accept all clicked - creating consent');
         const consent = this._createConsentObject(true);
+
+        this._logger.info('Saving consent');
         this._saveConsent(consent);
+
+        this._logger.info('Clearing unauthorized cookies');
         this._clearUnauthorizedCookies(consent);
+
+        this._logger.info('Loading scripts');
         this._loadScripts(consent);
+
+        this._logger.info('Hiding modal');
         this._hide();
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     _handleAcceptNecessary() {
-        this._logger.info('Accept necessary clicked');
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🎯 Handling Accept Necessary');
+        }
+
+        this._logger.info('Accept necessary clicked - creating consent');
         const consent = this._createConsentObject(false);
+
+        this._logger.info('Saving consent');
         this._saveConsent(consent);
+
+        this._logger.info('Clearing unauthorized cookies');
         this._clearUnauthorizedCookies(consent);
+
+        this._logger.info('Loading scripts');
         this._loadScripts(consent);
 
         const modalSettings = this.config.visual.modalTypes[this.currentModalType];
@@ -814,9 +978,15 @@ export class CookieConsent {
         // Показываем баннер улучшения опыта только если это предусмотрено настройками
         // и если пользователь не закрыл окно принудительно через кнопку закрытия
         if (modalSettings?.showExperienceImprove && !this._closedViaCloseButton) {
+            this._logger.info('Showing experience improve banner');
             this._showExperienceImprove();
         } else {
+            this._logger.info('Hiding modal');
             this._hide();
+        }
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
         }
     }
 
@@ -882,6 +1052,11 @@ export class CookieConsent {
     _showExperienceImprove() {
         this._logger.info('Showing experience improve banner');
 
+        // Убеждаемся, что элементы созданы
+        if (!this.notification || !this.overlay) {
+            this._createElements();
+        }
+
         // Сначала скрываем текущее модальное окно
         this._hide();
 
@@ -923,6 +1098,11 @@ export class CookieConsent {
      * Создает объект согласия
      */
     _createConsentObject(allAccepted = true) {
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 📝 Creating Consent Object');
+            console.log('[CookieConsent] All Accepted:', allAccepted);
+        }
+
         const consent = {
             is_cookies_accepted: 1,
             timestamp: Date.now()
@@ -930,7 +1110,15 @@ export class CookieConsent {
 
         Object.entries(this.config.categories).forEach(([key, category]) => {
             consent[key] = allAccepted ? true : (category.required || false);
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] Category ${key}:`, consent[key]);
+            }
         });
+
+        if (this._logger.isDebugEnabled) {
+            console.log('[CookieConsent] Final Consent Object:', consent);
+            console.groupEnd();
+        }
 
         return consent;
     }
@@ -939,26 +1127,56 @@ export class CookieConsent {
      * Сохраняет согласие
      */
     _saveConsent(consent) {
-        console.group('[CookieConsent] 💾 Saving Consent');
-        console.log('[CookieConsent] 📝 Consent to save:', consent);
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 💾 Saving Consent');
+            console.log('[CookieConsent] 📝 Consent to save:', consent);
+            console.log('[CookieConsent] localStorage available:', typeof localStorage !== 'undefined');
+        }
 
         try {
-            localStorage.setItem('cookieConsent', JSON.stringify(consent));
-            console.log('[CookieConsent] ✅ Consent saved to localStorage');
+            if (!consent) {
+                throw new Error('Consent object is empty');
+            }
+
+            const consentString = JSON.stringify(consent);
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] Consent string to save:', consentString);
+            }
+
+            localStorage.setItem('cookieConsent', consentString);
+
+            // Проверяем что сохранилось
+            const savedConsent = this._getStoredConsent();
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] ✅ Consent saved and retrieved:', savedConsent);
+            }
 
             // Отправляем события
-            this._sendGtmEvent(this.config.tagManagers.gtm.events.consent, { consent });
+            if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
+                const gtmEvent = this.config.tagManagers.gtm.events.consent;
+                if (this._logger.isDebugEnabled) {
+                    console.log('[CookieConsent] 📊 Sending GTM event:', gtmEvent);
+                }
+                this._sendGtmEvent(gtmEvent, { consent });
+            }
 
             // Отправляем кастомное событие
             const consentEvent = new CustomEvent('cookieConsent', { detail: consent });
             window.dispatchEvent(consentEvent);
-            console.log('[CookieConsent] 📢 Custom event dispatched:', consentEvent);
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📢 Custom event dispatched');
+            }
 
         } catch (error) {
-            console.error('[CookieConsent] ❌ Failed to save consent:', error);
+            this._logger.error('Failed to save consent:', error);
+            if (this._logger.isDebugEnabled) {
+                console.error('[CookieConsent] ❌ Error details:', error);
+            }
         }
 
-        console.groupEnd();
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     /**
@@ -978,31 +1196,50 @@ export class CookieConsent {
      * Загружает скрипты на основе согласия
      */
     _loadScripts(consent) {
-        console.group('[CookieConsent] 🔄 Loading Scripts');
-        console.log('[CookieConsent] 📝 Current Consent State:', consent);
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🔄 Loading Scripts');
+            console.log('[CookieConsent] 📝 Current Consent State:', consent);
+        }
 
         Object.entries(consent).forEach(([category, isAllowed]) => {
-            console.log(`[CookieConsent] ${category}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] ${category}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
+            }
+
             if (isAllowed && this.config.categories[category]?.scripts) {
-                console.group(`[CookieConsent] 📜 Loading scripts for ${category}`);
+                if (this._logger.isDebugEnabled) {
+                    console.group(`[CookieConsent] 📜 Loading scripts for ${category}`);
+                }
                 this._loadCategoryScripts(category);
-                console.groupEnd();
+                if (this._logger.isDebugEnabled) {
+                    console.groupEnd();
+                }
             }
         });
 
-        console.groupEnd();
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     /**
      * Загружает скрипты для категории
      */
     _loadCategoryScripts(category) {
+        if (this._logger.isDebugEnabled) {
+            console.group(`[CookieConsent] 📜 Loading scripts for category: ${category}`);
+        }
+
         const scripts = this.config.categories[category]?.scripts || [];
 
         scripts.forEach(script => {
             if (!this._validateScript(script)) {
                 this._logger.warn(`Invalid script for category ${category}:`, script);
                 return;
+            }
+
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] Loading script:`, script);
             }
 
             switch (script.type) {
@@ -1016,10 +1253,36 @@ export class CookieConsent {
                     this._sendGtmEvent(script.name, script.data);
                     break;
                 case 'event':
-                    this._triggerScriptEvent(script);
+                    // Проверяем загрузку MTM перед отправкой события
+                    if (script.name === 'testEvent' && this.config.tagManagers?.matomo?.enabled) {
+                        if (typeof window._mtm === 'undefined') {
+                            this._logger.warn('MTM not loaded yet, waiting...');
+                            // Ждем загрузки MTM
+                            const checkMTM = setInterval(() => {
+                                if (typeof window._mtm !== 'undefined') {
+                                    clearInterval(checkMTM);
+                                    this._logger.info('MTM loaded, sending event');
+                                    this._triggerScriptEvent(script);
+                                }
+                            }, 100);
+                            // Устанавливаем таймаут на случай если MTM не загрузится
+                            setTimeout(() => {
+                                clearInterval(checkMTM);
+                                this._logger.error('MTM load timeout');
+                            }, 5000);
+                        } else {
+                            this._triggerScriptEvent(script);
+                        }
+                    } else {
+                        this._triggerScriptEvent(script);
+                    }
                     break;
             }
         });
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     /**
@@ -1053,22 +1316,41 @@ export class CookieConsent {
     _triggerScriptEvent(script) {
         const { name, data = {} } = script;
 
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🎯 Event Trigger');
+            console.log('[CookieConsent] 📣 Event Name:', name);
+        }
+
         // GTM
         if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
-            dataLayer.push({
+            const eventData = {
                 event: name,
                 ...data,
                 timestamp: new Date().toISOString()
-            });
+            };
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📊 GTM Event Data:', eventData);
+            }
+            dataLayer.push(eventData);
         }
 
-        // Matomo
-        if (this.config.tagManagers?.matomo?.enabled && typeof _paq !== 'undefined') {
-            _paq.push(['trackEvent', 'CookieConsent', name, JSON.stringify(data)]);
+        // MTM
+        if (this.config.tagManagers?.matomo?.enabled && typeof window._mtm !== 'undefined') {
+            const eventData = {
+                'event': name
+            };
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📊 MTM Event Data:', eventData);
+            }
+            window._mtm.push(eventData);
         }
 
         // Кастомное событие
         window.dispatchEvent(new CustomEvent(`cookieConsent:${name}`, { detail: data }));
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     /**
@@ -1097,21 +1379,30 @@ export class CookieConsent {
      * Очищает неавторизованные cookies
      */
     _clearUnauthorizedCookies(consent = {}) {
-        const consentRequiredCookies = {
-            analytics: ['_ym_uid', '_ym_d', '_ga', '_gid', '_gat'],
-            marketing: ['_fbp', '_fbc'],
-            functional: ['PHPSESSID']
-        };
-
+        // Получаем все cookie
         const cookies = document.cookie.split(';');
 
         cookies.forEach(cookie => {
             const [name] = cookie.trim().split('=');
             let shouldDelete = false;
 
-            Object.entries(consentRequiredCookies).forEach(([category, cookieList]) => {
-                if (cookieList.includes(name) && !consent[category]) {
+            // Проверяем каждую категорию
+            Object.entries(this.config.categories).forEach(([category, settings]) => {
+                // Пропускаем, если категория разрешена
+                if (consent[category]) return;
+
+                // Проверяем точные совпадения
+                if (settings.cookiesToRemove?.includes(name)) {
+                    this._logger.info(`Removing exact match cookie: ${name} from category ${category}`);
                     shouldDelete = true;
+                    return;
+                }
+
+                // Проверяем префиксы
+                if (settings.cookiePrefixes?.some(prefix => name.startsWith(prefix))) {
+                    this._logger.info(`Removing cookie by prefix: ${name} from category ${category}`);
+                    shouldDelete = true;
+                    return;
                 }
             });
 
@@ -1126,18 +1417,29 @@ export class CookieConsent {
      */
     _deleteCookie(name) {
         const domain = window.location.hostname;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain}`;
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${domain}`;
+        const paths = ['/', '/subpath']; // Добавьте дополнительные пути если необходимо
+        const domains = [domain, `.${domain}`]; // Добавляем точку для поддержки поддоменов
+
+        this._logger.info(`Deleting cookie: ${name}`);
+
+        // Пробуем удалить cookie для всех комбинаций путей и доменов
+        paths.forEach(path => {
+            domains.forEach(cookieDomain => {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}; domain=${cookieDomain}`;
+                this._logger.info(`Attempted to delete cookie ${name} for domain=${cookieDomain}, path=${path}`);
+            });
+        });
     }
 
     /**
-     * Отправляет событие в GTM и логирует все события согласия
+     * Отправляет событие в GTM и MTM
      */
     _sendGtmEvent(eventName, data = {}) {
-        // Подробное логирование всех событий
-        console.group('[CookieConsent] 🍪 Event Tracking');
-        console.log('[CookieConsent] 📣 Event Name:', eventName);
-        console.log('[CookieConsent] 📦 Event Data:', data);
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🍪 Event Tracking');
+            console.log('[CookieConsent] 📣 Event Name:', eventName);
+            console.log('[CookieConsent] 📦 Event Data:', data);
+        }
 
         // GTM события
         if (this.config.tagManagers?.gtm?.enabled && typeof dataLayer !== 'undefined') {
@@ -1146,17 +1448,25 @@ export class CookieConsent {
                 ...data,
                 timestamp: new Date().toISOString()
             };
-            console.log('[CookieConsent] 📊 GTM Event Data:', eventData);
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📊 GTM Event Data:', eventData);
+            }
             dataLayer.push(eventData);
         }
 
-        // Matomo события
-        if (this.config.tagManagers?.matomo?.enabled && typeof _paq !== 'undefined') {
-            console.log('[CookieConsent] 📈 Matomo Event:', ['trackEvent', 'CookieConsent', eventName, JSON.stringify(data)]);
-            _paq.push(['trackEvent', 'CookieConsent', eventName, JSON.stringify(data)]);
+        // Matomo Tag Manager
+        if (this.config.tagManagers?.matomo?.enabled && typeof _mtm !== 'undefined') {
+            if (this._logger.isDebugEnabled) {
+                console.log('[CookieConsent] 📊 MTM Event:', eventName);
+            }
+            _mtm.push({
+                'event': eventName
+            });
         }
 
-        console.groupEnd();
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
+        }
     }
 
     /**
@@ -1388,7 +1698,9 @@ export class CookieConsent {
      * Создает объект согласия для тестового режима
      */
     _createTestModeConsent() {
-        console.group('[CookieConsent] 🧪 Test Mode Consent');
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] 🧪 Test Mode Consent');
+        }
 
         const testConsent = {
             is_cookies_accepted: true,
@@ -1401,18 +1713,23 @@ export class CookieConsent {
         Object.entries(this.config.categories).forEach(([key, category]) => {
             const isAllowed = category.required || testModeConsent[key] || false;
             testConsent[key] = isAllowed;
-            console.log(`[CookieConsent] ${key}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
+            if (this._logger.isDebugEnabled) {
+                console.log(`[CookieConsent] ${key}:`, isAllowed ? '✅ Allowed' : '❌ Denied');
+            }
         });
 
-        console.log('[CookieConsent] 📋 Final Test Consent:', testConsent);
-        console.groupEnd();
+        if (this._logger.isDebugEnabled) {
+            console.log('[CookieConsent] 📋 Final Test Consent:', testConsent);
+            console.groupEnd();
+        }
         return testConsent;
     }
 
     // Публичные статические методы API
     static init(options = {}) {
-        // Добавляем отладочную информацию
-        console.log('[CookieConsent] 🚀 Initializing with options:', options);
+        if (window.__COOKIE_CONSENT_DEBUG__) {
+            console.log('[CookieConsent] 🚀 Initializing with options:', options);
+        }
 
         // Проверяем и мержим с дефолтной конфигурацией
         const mergedOptions = {
@@ -1423,7 +1740,9 @@ export class CookieConsent {
             ...options
         };
 
-        console.log('[CookieConsent] 🔄 Merged options:', mergedOptions);
+        if (window.__COOKIE_CONSENT_DEBUG__) {
+            console.log('[CookieConsent] 🔄 Merged options:', mergedOptions);
+        }
 
         if (!this.instance) {
             this.instance = new CookieConsent(mergedOptions);
