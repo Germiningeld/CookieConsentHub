@@ -566,7 +566,7 @@ export class CookieConsent {
     _renderInitialContent() {
         const texts = this.config.texts.mainBanner;
         return `
-            <h2 class="cookie-consent__title">${this._escapeHtml(texts.title)}</h2>
+            <div class="cookie-consent__title">${this._escapeHtml(texts.title)}</div>
             <div class="cookie-consent__description">
                 ${this._wrapTextInParagraphs(texts.description)}
             </div>
@@ -587,7 +587,7 @@ export class CookieConsent {
         const savedConsent = this._getStoredConsent() || {};
 
         return `
-            <h2 class="cookie-consent__title">${this._escapeHtml(texts.title)}</h2>
+            <div class="cookie-consent__title">${this._escapeHtml(texts.title)}</div>
             <div class="cookie-consent__description">
                 ${this._wrapTextInParagraphs(texts.description)}
             </div>
@@ -607,7 +607,7 @@ export class CookieConsent {
     _renderExperienceImproveContent() {
         const texts = this.config.texts.experienceImprove;
         return `
-            <h2 class="cookie-consent__title">${this._escapeHtml(texts.title)}</h2>
+            <div class="cookie-consent__title">${this._escapeHtml(texts.title)}</div>
             <div class="cookie-consent__description">
                 ${this._wrapTextInParagraphs(texts.description)}
             </div>
@@ -635,7 +635,7 @@ export class CookieConsent {
 
         const content = `
         <div class="cookie-consent__header">
-            <h2 class="cookie-consent__title">${this._escapeHtml(texts.title)}</h2>
+            <div class="cookie-consent__title">${this._escapeHtml(texts.title)}</div>
             <div class="cookie-consent__description">
                 ${wrappedDescription}
             </div>
