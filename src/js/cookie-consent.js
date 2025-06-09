@@ -4,6 +4,7 @@
  */
 
 import { cookieConsentConfig } from './cookie-consent-config.js';
+import { cookieConsentStyles } from './cookie-consent-styles.js';
 
 /**
  * Основной класс для управления согласием на cookie
@@ -28,6 +29,9 @@ export class CookieConsent {
         this._logger.info('🚀 Initializing CookieConsent');
         this._logger.info('📝 Configuration received:', config);
 
+        // Инжектируем базовые стили
+        this._injectBaseStyles();
+
         // Генерируем CSRF токен
         this._csrfToken = this._getStoredCsrfToken() || this._generateCsrfToken();
         this._storeCsrfToken(this._csrfToken);
@@ -47,6 +51,30 @@ export class CookieConsent {
 
         // Инициализируем компонент
         this._initialize();
+    }
+
+    /**
+     * Инжектирует базовые стили для сброса и базового оформления
+     */
+    _injectBaseStyles() {
+        const styleId = 'cookie-consent-base-styles';
+
+        // Проверяем, не добавлены ли уже стили
+        if (document.getElementById(styleId)) {
+            return;
+        }
+
+        // Создаем элемент style
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = cookieConsentStyles;
+
+        // Добавляем стили в head
+        document.head.appendChild(style);
+
+        if (this._logger?.isDebugEnabled) {
+            this._logger.info('Base styles injected');
+        }
     }
 
     /**
