@@ -20,9 +20,23 @@ export const cookieConsentConfig = {
         consentExpiration: 30 * 24 * 60 * 60 * 1000 // Срок действия согласия в миллисекундах (30 дней)
     },
     styles: {
+        cookieConsentPath: '/',               // Путь к корневой папке плагина.
+        fontFamily: "'Manrope', sans-serif",  // Основное семейство шрифтов для баннера.
+        fontFiles: [                          // Файлы шрифтов для @font-face. Указываются относительно cookieConsentPath.
+            {
+                path: 'font/manrope-regular.woff2',
+                weight: '400',
+                style: 'normal'
+            },
+            {
+                path: 'font/manrope-bold.woff2',
+                weight: '700',
+                style: 'normal'
+            }
+        ],
         autoLoadCSS: true,                    // Включить/выключить автозагрузку CSS
         cssFiles: [                           // Список файлов для загрузки
-            '/assets/cookie_consent/css/main.min.css',        // Основные стили
+            'css/main.min.css',               // Путь к CSS относительно cookieConsentPath
         ]
     },
 

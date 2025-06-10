@@ -12,6 +12,8 @@
 // Основные стили
 .cookie-consent
   @include modal-base
+  font-family: var(--cc-font-family, #{$font-family-base})
+  font-size: $font-size-base
   z-index: var(--cookie-consent-z-index, $z-index-cookie-consent)
   color: $light-text
   opacity: 0
@@ -28,6 +30,9 @@
   // Добавляем скролл для высоких модальных окон
   max-height: 90vh
   overflow-y: auto
+
+  .cookie-consent__description
+    margin-bottom: 16px
 
   // Общие стили для баннеров (top/bottom)
   &--top,

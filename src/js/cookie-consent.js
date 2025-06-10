@@ -4,7 +4,7 @@
  */
 
 import { cookieConsentConfig } from './cookie-consent-config.js';
-import { cookieConsentStyles } from './cookie-consent-styles.js';
+// import { cookieConsentStyles } from './cookie-consent-styles.js';
 
 /**
  * Основной класс для управления согласием на cookie
@@ -30,7 +30,7 @@ export class CookieConsent {
         this._logger.info('📝 Configuration received:', config);
 
         // Инжектируем базовые стили
-        this._injectBaseStyles();
+        // this._injectBaseStyles();
 
         // Генерируем CSRF токен
         this._csrfToken = this._getStoredCsrfToken() || this._generateCsrfToken();
@@ -54,27 +54,76 @@ export class CookieConsent {
     }
 
     /**
-     * Инжектирует базовые стили для сброса и базового оформления
+     * Инжектирует динамические стили (шрифты) и устанавливает CSS-переменные
      */
-    _injectBaseStyles() {
-        const styleId = 'cookie-consent-base-styles';
+    _injectDynamicStyles() {
+        const { cookieConsentPath = '', fontFamily, fontFiles = [] } = this.config.styles;
 
-        // Проверяем, не добавлены ли уже стили
-        if (document.getElementById(styleId)) {
+        if (!fontFamily) {
             return;
         }
 
-        // Создаем элемент style
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = cookieConsentStyles;
+        // 1. Устанавливаем CSS-переменную для font-family, чтобы стили могли ее использовать
+        document.documentElement.style.setProperty('--cc-font-family', fontFamily);
 
-        // Добавляем стили в head
-        document.head.appendChild(style);
+        // 2. Генерируем и встраиваем правила @font-face, если они определены
+        if (fontFiles.length > 0) {
+            // Извлекаем имя основного шрифта из строки 'Roboto', sans-serif -> 'Roboto'
+            const primaryFontName = fontFamily.split(',')[0].trim();
+
+            const fontFaces = fontFiles.map(font => {
+                const { path, weight = '400', style = 'normal' } = font;
+                const url = `${cookieConsentPath}${path}`;
+                // Простое определение формата по расширению
+                const format = path.includes('.woff2') ? 'woff2' : path.includes('.woff') ? 'woff' : 'truetype';
+
+                return `
+                    @font-face {
+                        font-family: ${primaryFontName};
+                        font-style: ${style};
+                        font-weight: ${weight};
+                        font-display: swap;
+                        src: url('${url}') format('${format}');
+                    }
+                `;
+            }).join('');
+
+            const styleId = 'cookie-consent-font-styles';
+            if (!document.getElementById(styleId)) {
+                const style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = fontFaces;
+                document.head.appendChild(style);
+            }
+        }
 
         if (this._logger?.isDebugEnabled) {
-            this._logger.info('Base styles injected');
+            this._logger.info(`Dynamic styles injected. Font family: ${fontFamily}.`);
         }
+    }
+
+    /**
+     * Инжектирует базовые стили для сброса и базового оформления
+     */
+    _injectBaseStyles() {
+        // const styleId = 'cookie-consent-base-styles';
+
+        // // Проверяем, не добавлены ли уже стили
+        // if (document.getElementById(styleId)) {
+        //     return;
+        // }
+
+        // // Создаем элемент style
+        // const style = document.createElement('style');
+        // style.id = styleId;
+        // style.textContent = cookieConsentStyles;
+
+        // // Добавляем стили в head
+        // document.head.appendChild(style);
+
+        // if (this._logger?.isDebugEnabled) {
+        //     this._logger.info('Base styles injected');
+        // }
     }
 
     /**
@@ -215,17 +264,16 @@ export class CookieConsent {
      * @param {string} cssPath - Путь к CSS файлу
      */
     _loadCSSFile(cssPath) {
+        const path = this.config.styles.cookieConsentPath || '';
+        const fullPath = cssPath.startsWith('http') ? cssPath : path + cssPath;
         // Проверяем, не загружен ли уже этот файл
-        const existingLink = document.querySelector(`link[href="${cssPath}"]`);
+        const existingLink = document.querySelector(`link[href="${fullPath}"]`);
         if (existingLink) {
             if (this._logger.isDebugEnabled) {
-                this._logger.info('CSS file already loaded: ' + cssPath);
+                this._logger.info('CSS file already loaded: ' + fullPath);
             }
             return;
         }
-
-        // Формируем полный путь
-        const fullPath = cssPath.startsWith('http') ? cssPath : (cssPath.startsWith('/') ? cssPath : '/' + cssPath);
 
         // Создаем link элемент
         const link = document.createElement('link');
@@ -257,74 +305,75 @@ export class CookieConsent {
      * Основная инициализация 
      */
     _initialize() {
-        try {
-            // Добавляем отладочную информацию
-            this._logger.info('Starting initialization. Test mode:', this.isTestMode);
-            this._logger.info('Current config:', this.config);
+        if (this._logger.isDebugEnabled) {
+            console.group('[CookieConsent] ▶️ Initializing Component');
+        }
 
-            // Загружаем CSS файлы перед показом модальных окон
-            this._loadCSSFiles();
+        // Устанавливаем пути к ресурсам и динамические стили
+        this._injectDynamicStyles();
 
-            // Проверяем тестовый режим
-            if (this.isTestMode) {
-                this._logger.info('Test mode enabled - using predefined consent');
-                const testConsent = this._createTestModeConsent();
-                this._saveConsent(testConsent);
-                this._clearUnauthorizedCookies(testConsent);
-                this._loadScripts(testConsent);
-                return;
-            }
+        // Загружаем CSS
+        this._loadCSSFiles();
 
-            this._logger.info('Test mode not enabled, continuing with normal initialization');
+        // Проверяем тестовый режим
+        if (this.isTestMode) {
+            this._logger.info('Test mode enabled - using predefined consent');
+            const testConsent = this._createTestModeConsent();
+            this._saveConsent(testConsent);
+            this._clearUnauthorizedCookies(testConsent);
+            this._loadScripts(testConsent);
+            return;
+        }
 
-            if (this.isSimpleMode) {
-                // В простом режиме: новая логика
-                const savedConsent = this._getStoredConsent();
-                this._logger.info('Simple mode - Retrieved saved consent:', savedConsent);
+        this._logger.info('Test mode not enabled, continuing with normal initialization');
 
-                // Проверяем, нужно ли показывать баннер
-                if (this._shouldShowSimpleBanner(savedConsent)) {
-                    this._logger.info('Simple mode - Showing banner and creating initial consent');
-
-                    // Создаем полный объект согласия со всеми категориями, но БЕЗ is_cookies_accepted
-                    const initialConsent = this._createSimpleInitialConsent();
-                    this._saveConsent(initialConsent);
-                    this._logger.info('Simple mode - Initial consent saved:', initialConsent);
-
-                    // Загружаем все скрипты
-                    this._clearUnauthorizedCookies(initialConsent);
-                    this._loadScripts(initialConsent);
-
-                    // Показываем баннер
-                    this._createElements();
-                    this._showSimpleNotification();
-                } else {
-                    this._logger.info('Simple mode - Banner hidden (user already accepted)');
-                    // Загружаем скрипты на основе сохраненного согласия
-                    this._clearUnauthorizedCookies(savedConsent);
-                    this._loadScripts(savedConsent);
-                }
-                return;
-            }
-
-            // Обычный режим - оригинальная логика
+        if (this.isSimpleMode) {
+            // В простом режиме: новая логика
             const savedConsent = this._getStoredConsent();
-            this._logger.info('Retrieved saved consent:', savedConsent);
+            this._logger.info('Simple mode - Retrieved saved consent:', savedConsent);
 
-            if (this._isValidConsent(savedConsent)) {
-                this._logger.info('Valid consent found, loading scripts');
+            // Проверяем, нужно ли показывать баннер
+            if (this._shouldShowSimpleBanner(savedConsent)) {
+                this._logger.info('Simple mode - Showing banner and creating initial consent');
+
+                // Создаем полный объект согласия со всеми категориями, но БЕЗ is_cookies_accepted
+                const initialConsent = this._createSimpleInitialConsent();
+                this._saveConsent(initialConsent);
+                this._logger.info('Simple mode - Initial consent saved:', initialConsent);
+
+                // Загружаем все скрипты
+                this._clearUnauthorizedCookies(initialConsent);
+                this._loadScripts(initialConsent);
+
+                // Показываем баннер
+                this._createElements();
+                this._showSimpleNotification();
+            } else {
+                this._logger.info('Simple mode - Banner hidden (user already accepted)');
+                // Загружаем скрипты на основе сохраненного согласия
                 this._clearUnauthorizedCookies(savedConsent);
                 this._loadScripts(savedConsent);
-                return;
             }
+            return;
+        }
 
-            this._logger.info('No valid consent found, showing banner');
-            this._createElements();
-            this._showInitialModal();
+        // Обычный режим - оригинальная логика
+        const savedConsent = this._getStoredConsent();
+        this._logger.info('Retrieved saved consent:', savedConsent);
 
-        } catch (error) {
-            this._logger.error('Failed to initialize:', error);
-            throw error;
+        if (this._isValidConsent(savedConsent)) {
+            this._logger.info('Valid consent found, loading scripts');
+            this._clearUnauthorizedCookies(savedConsent);
+            this._loadScripts(savedConsent);
+            return;
+        }
+
+        this._logger.info('No valid consent found, showing banner');
+        this._createElements();
+        this._showInitialModal();
+
+        if (this._logger.isDebugEnabled) {
+            console.groupEnd();
         }
     }
 
@@ -1755,27 +1804,18 @@ export class CookieConsent {
 
     // Публичные статические методы API
     static init(options = {}) {
-        if (window.__COOKIE_CONSENT_DEBUG__) {
-            console.log('[CookieConsent] 🚀 Initializing with options:', options);
-        }
-
-        // Проверяем и мержим с дефолтной конфигурацией
-        const mergedOptions = {
-            core: {
-                ...cookieConsentConfig.core,
-                ...(options.core || {})
-            },
-            ...options
+        const runInitialization = () => {
+            if (!CookieConsent.instance) {
+                CookieConsent.instance = new CookieConsent(options);
+            }
+            return CookieConsent.instance;
         };
 
-        if (window.__COOKIE_CONSENT_DEBUG__) {
-            console.log('[CookieConsent] 🔄 Merged options:', mergedOptions);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runInitialization);
+        } else {
+            return runInitialization();
         }
-
-        if (!this.instance) {
-            this.instance = new CookieConsent(mergedOptions);
-        }
-        return this.instance;
     }
 
     static hasConsent(category) {
